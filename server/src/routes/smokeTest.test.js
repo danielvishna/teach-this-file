@@ -4,7 +4,7 @@
  * check our route logic, not the model's behavior.
  */
 import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app.js';
 import { createMockGeminiClient } from '../test/mockGeminiClient.js';
 
@@ -20,12 +20,25 @@ describe('POST /api/smoke-test', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 400 when apiKey is missing', async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('returns 400 when apiKey is missing and no env fallback is set', async () => {
     const app = createApp();
     const res = await request(app).post('/api/smoke-test').send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/apiKey/i);
     expect(createGeminiClient).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the GEMINI_API_KEY env var when the request omits apiKey (local dev only)', async () => {
+    vi.stubEnv('GEMINI_API_KEY', 'env-key');
+    createGeminiClient.mockReturnValue(createMockGeminiClient({ text: 'Smoke test OK' }));
+    const app = createApp();
+    const res = await request(app).post('/api/smoke-test').send({});
+    expect(res.status).toBe(200);
+    expect(createGeminiClient).toHaveBeenCalledWith('env-key');
   });
 
   it('returns the model reply on success', async () => {

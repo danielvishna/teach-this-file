@@ -16,6 +16,10 @@ const ERROR_SCHEMA = {
   },
 };
 
+// What /api/plan actually returns — no per-step `status`. That field only
+// exists client-side, added by the reducer (lessonReducer.js) once the
+// plan lands in app state. Keep this schema matching the real response,
+// not the reducer's state shape.
 const LESSON_PLAN_SCHEMA = {
   type: 'object',
   properties: {
@@ -32,7 +36,6 @@ const LESSON_PLAN_SCHEMA = {
           title: { type: 'string' },
           objective: { type: 'string' },
           sourceExcerpt: { type: 'string', description: 'Verified exact substring of the uploaded file.' },
-          status: { type: 'string', enum: ['pending', 'active', 'completed'] },
         },
       },
     },

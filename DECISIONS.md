@@ -4,6 +4,10 @@
 
 ## Main choices made, and why
 
+- **`zod` for schema validation** (`server/src/validation/lessonPlanSchema.js`): the lesson
+  plan's shape plus the grounding check (every step's `sourceExcerpt` is a real substring of the
+  file) both run through it. Lightweight, a near-standard choice for this kind of runtime
+  validation, avoids hand-rolling the shape checks ourselves.
 - **Vitest for unit tests (client + server), with the AI provider always mocked.** Chosen over
   Jest for native ESM/Vite integration (no transform config needed) and one consistent test
   runner across both packages. Unit tests never call the real Gemini API — that's slow, flaky,
@@ -52,7 +56,10 @@
 
 ## Known weaknesses
 
-<!-- TODO -->
+- **Oversized-file feedback is server-only, not instant.** The `.txt`-only check gives immediate
+  inline feedback on file select; the 20,000-character limit is only checked after a full upload
+  round-trip to the server (confirmed via `ui-functional-tester`). A client-side character count
+  before upload would close this gap — deferred, not urgent enough to do now.
 
 ## What I'd do with 4 more hours
 

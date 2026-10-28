@@ -1,77 +1,47 @@
-import { useState } from 'react'
-
 /**
- * Base URL for the Express server. In dev, Vite's proxy handles relative
- * `/api/*` requests (see vite.config.js), so this is left empty. In
- * production the client and server are separate Vercel/Render deployments,
- * so this must point at the deployed server's absolute URL.
+ * @fileoverview Top-level screen router: switches on the lesson state's
+ * `phase` (see lessonReducer.js) to decide what to render. Holds the
+ * Gemini API key as local state here — outside the shared reducer, per
+ * CLAUDE.md's Architecture rule — and passes it down to whatever screen
+ * needs it for a fetch call.
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+import { useState } from 'react';
+import { ErrorScreen } from './components/ErrorScreen.jsx';
+import { PlanningScreen } from './components/PlanningScreen.jsx';
+import { SetupScreen } from './components/SetupScreen.jsx';
+import { LessonProvider, useLesson } from './state/LessonContext.jsx';
 
-/**
- * Temporary smoke-test screen: paste an API key, hit one hardcoded request
- * to the server, show the result. Verifies client/server/AI-provider wiring
- * end to end before any real feature is built, per the practice-run lessons.
- */
-function App() {
-  const [apiKey, setApiKey] = useState('')
-  const [status, setStatus] = useState('idle')
-  const [result, setResult] = useState('')
+function AppContent() {
+  const [apiKey, setApiKey] = useState('');
+  const { state, dispatch } = useLesson();
 
-  async function runSmokeTest() {
-    setStatus('loading')
-    setResult('')
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/smoke-test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      setResult(data.reply)
-      setStatus('success')
-    } catch (err) {
-      setResult(err.message)
-      setStatus('error')
-    }
+  if (state.phase === 'setup') {
+    return <SetupScreen apiKey={apiKey} onApiKeyChange={setApiKey} />;
   }
 
+  if (state.phase === 'planning') {
+    return <PlanningScreen />;
+  }
+
+  if (state.phase === 'error') {
+    return <ErrorScreen error={state.error} onRetry={() => dispatch({ type: 'RESET' })} />;
+  }
+
+  // phase is 'lesson' or 'done' — the chat screen lands in a later step.
   return (
-    <div className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">Deploy smoke test</h1>
+    <div className="mx-auto max-w-md p-6">
+      <h1 className="text-xl font-semibold">{state.lessonPlan?.title}</h1>
       <p className="text-sm text-gray-500">
-        Paste a Gemini API key and run one hardcoded request to confirm the
-        client, server and AI provider are wired together correctly.
+        {state.lessonPlan?.steps.length} steps planned. Chat screen coming next.
       </p>
-      <input
-        type="password"
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-        placeholder="Gemini API key"
-        className="rounded border border-gray-300 px-3 py-2"
-      />
-      <button
-        type="button"
-        onClick={runSmokeTest}
-        disabled={!apiKey || status === 'loading'}
-        className="rounded bg-indigo-600 px-3 py-2 text-white disabled:opacity-50"
-      >
-        {status === 'loading' ? 'Running…' : 'Run smoke test'}
-      </button>
-      {result && (
-        <pre
-          className={`whitespace-pre-wrap rounded border p-3 text-sm ${
-            status === 'error'
-              ? 'border-red-300 bg-red-50 text-red-700'
-              : 'border-gray-200 bg-gray-50'
-          }`}
-        >
-          {result}
-        </pre>
-      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <LessonProvider>
+      <AppContent />
+    </LessonProvider>
+  );
+}
