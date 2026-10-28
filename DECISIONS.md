@@ -22,12 +22,20 @@
   a 4-hour build. Full reasoning and the rejected alternative (option B, a snippet library) are
   in [this design doc](https://claude.ai/artifact/6im8fsyH3kFhkgPR8W1Skd); option B stays the
   documented fallback if testing shows the single prompt getting tone/level wrong.
+- **`stepCompleted` comes from a second, fast structured-output call after the streamed reply
+  finishes**, not parsed out of the streamed text itself (e.g. a trailing delimiter) and not a
+  Gemini tool-use call. Simplest to implement and reason about, at the cost of one extra
+  non-streaming call's latency per turn — acceptable under "let AI do more, fix it if it becomes
+  a real problem" rather than over-engineering a single-call solution up front.
+- **The lesson plan also carries `subject` and `targetAudience`**, inferred by the same planning
+  call, not just the step list — both feed the master prompt's tone/level and are worth keeping
+  as explicit state (not re-derived per turn).
 
 ## What was decided not to do, and why
 
-- **File types beyond `.txt` for v1** (PDF, scanned pages, images-in-file) — out of scope unless
-  time remains at the end; the brief's "build for the unexpected" files still need a clear
-  rejection error for unsupported types, not silent failure.
+- **File types beyond `.txt` for v1** — out of scope unless time remains at the end; the brief's
+  "build for the unexpected" files still need a clear rejection error for unsupported types, not
+  silent failure. Priority order if time remains: images, PDF, presentations (PPT/PPTX).
 - **Code-side text chunking and a per-subject/per-age prompt-snippet library** — considered
   (option B in the design doc above) and deliberately not the default: more dev time for a
   4-hour build, for a predictability benefit we don't yet know we need. Kept as the documented

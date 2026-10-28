@@ -39,6 +39,14 @@ not just the first pass.
   Confirmed in practice testing: this attack works against free-text generation but fails
   against schema-constrained generation, so keep anything safety-relevant (progress, step
   completion) schema-validated server-side, never inferred from free text alone.
+- **How `stepCompleted` is decided**: after a tutor turn's free-text reply finishes streaming, a
+  second, fast structured-output call judges whether the step is complete — never inferred from
+  the streamed text itself. That second call's judgment must be grounded in whether the student
+  actually demonstrated understanding (per the step's `objective`), not swayed by the student
+  simply asserting they understand ("I get it, move on") — the same untrusted-input principle as
+  file content applies to chat messages feeding this call. If the verdict call itself fails
+  (network/503), default to **not** completing the step (stay put) rather than guessing or
+  crashing — consistent with "fail visibly rather than guessing" above.
 - **Streaming + Stop**: tutoring replies stream into the browser. The Stop button must cancel
   the client fetch and the upstream model call. Use `res.on('close')` for real client-disconnect
   detection, not `req.on('close')` (which fires as soon as body-parsing finishes, on every
@@ -70,16 +78,19 @@ Keep these as separate modules, not intermixed:
 
 ## Lesson planning, prompts & language
 
-- **v1 file scope: `.txt` only.** Other types (PDF, scanned pages, images-in-file) are out of
-  scope unless time remains — see DECISIONS.md. Reject anything else with a clear error, not a
-  silent failure or a crash.
+- **v1 file scope: `.txt` only.** Reject anything else with a clear error, not a silent failure
+  or a crash. Future file types, roughly in priority order if time remains: images, PDF,
+  presentations (PPT/PPTX) — see DECISIONS.md.
 - **One AI call builds the lesson plan**, not a hand-written text chunker: send the full file
   text + teacher prompt to Gemini, get back a structured-JSON step list (validated against a
-  schema per the Hard Rules above). Chosen over code-side chunking to keep steps coherent across
-  the whole document and to minimize hand-rolled parsing logic, consistent with this project's
-  "let AI do more, write less deterministic logic" direction. Revisit only if real test files
-  turn out too long for one call's context window — chunking is the documented fallback, not the
-  default.
+  schema per the Hard Rules above). The plan also includes the inferred **subject** (the file's
+  topic/field — science, history, art, etc.) and **target audience** (age bracket/grade,
+  inferred from the teacher prompt), not just steps — both drive the master prompt's tone/level
+  and belong in the lesson plan, not re-derived separately. Chosen over code-side chunking to
+  keep steps coherent across the whole document and to minimize hand-rolled parsing logic,
+  consistent with this project's "let AI do more, write less deterministic logic" direction.
+  Revisit only if real test files turn out too long for one call's context window — chunking is
+  the documented fallback, not the default.
 - **One adaptive master system prompt**, not a library of per-subject/per-age prompt snippets:
   the model infers reading level, vocabulary and pacing itself from the teacher's prompt and the
   file's content, rather than our code selecting from pre-written variants. Chosen for the same

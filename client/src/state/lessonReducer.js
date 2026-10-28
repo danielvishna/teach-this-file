@@ -14,6 +14,8 @@
  *   fileName: string,
  *   lessonPlan: {
  *     title: string,
+ *     subject: string,           // the file's topic/field, e.g. "biology"
+ *     targetAudience: string,    // age bracket/grade inferred from the prompt
  *     language: string,          // teaching language, decided by the AI
  *     steps: Array<{
  *       id: string,

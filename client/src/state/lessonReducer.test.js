@@ -7,6 +7,8 @@ import { initialState, lessonReducer } from './lessonReducer.js';
 
 const twoStepPlan = {
   title: 'Gravity',
+  subject: 'physics',
+  targetAudience: '7th grade',
   language: 'en',
   steps: [
     { id: 'step_1', title: 'What is gravity?', objective: 'Define it', sourceExcerpt: 'Gravity pulls things down.' },
