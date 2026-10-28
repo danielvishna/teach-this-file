@@ -28,6 +28,22 @@ npm run dev              # http://localhost:5173
 The client proxies `/api/*` requests to the server during development (see
 `client/vite.config.js`).
 
+### API docs
+
+With the server running: interactive Swagger UI at http://localhost:3001/api/docs, raw OpenAPI
+3.0 JSON at http://localhost:3001/api/openapi.json.
+
+### Tests
+
+```bash
+cd server && npm test   # or: cd client && npm test
+```
+
+Unit tests (Vitest) always mock the AI provider — no real network/API calls, no cost, no
+flakiness. Real-model behavior is verified separately (see `DECISIONS.md`'s test scenarios and
+`.claude/agents/ai-behavior-tester.md`). CI (`.github/workflows/ci.yml`) runs lint + tests for
+both packages on every push.
+
 ## Using the app
 
 1. Open the app and paste a Gemini API key in the settings field (never stored server-side —
