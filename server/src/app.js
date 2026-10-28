@@ -9,6 +9,7 @@ import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { openapiSpec } from './openapi.js';
+import { planRouter } from './routes/plan.js';
 import { smokeTestRouter } from './routes/smokeTest.js';
 
 /**
@@ -21,6 +22,7 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
 
   app.use('/api/smoke-test', smokeTestRouter);
+  app.use('/api/plan', planRouter);
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });

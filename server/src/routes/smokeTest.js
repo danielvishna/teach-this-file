@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createGeminiClient, DEFAULT_MODEL } from '../ai/geminiClient.js';
+import { resolveApiKey } from '../ai/resolveApiKey.js';
 
 export const smokeTestRouter = Router();
 
@@ -8,7 +9,7 @@ export const smokeTestRouter = Router();
  * that client, server and provider are wired together after a deploy.
  */
 smokeTestRouter.post('/', async (req, res) => {
-  const { apiKey } = req.body;
+  const apiKey = resolveApiKey(req.body.apiKey);
   if (!apiKey) {
     return res.status(400).json({ error: 'apiKey is required' });
   }

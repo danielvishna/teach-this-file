@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { openapiSpec } from './openapi.js';
 
 /** @const {!Array<string>} Every route path mounted directly in app.js (excluding /api/docs and /api/openapi.json, which describe the spec itself rather than being described by it). */
-const ROUTES_IN_APP = ['/api/health', '/api/smoke-test'];
+const ROUTES_IN_APP = ['/api/health', '/api/smoke-test', '/api/plan'];
 
 describe('openapiSpec', () => {
   it('documents every route mounted in the app', () => {
