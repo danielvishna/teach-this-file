@@ -165,6 +165,25 @@ describe('ChatScreen', () => {
     expect(screen.getByText('Step 2 opening')).toBeInTheDocument();
   });
 
+  it('shows a step-transition divider where a new step begins, not between messages within a step', async () => {
+    const verdicts = [true, false];
+    let i = 0;
+    streamTutorTurn.mockImplementation(async ({ onChunk, onVerdict }) => {
+      onChunk(verdicts[i] ? 'Step 1 reply' : 'Step 2 opening');
+      onVerdict(verdicts[i++]);
+    });
+    renderChatScreen();
+
+    await waitFor(() => expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument());
+
+    // Exactly one divider: between step 1's last message and step 2's
+    // opening — not before step 1's own opening message (there is nothing
+    // to transition from yet).
+    const dividers = screen.getAllByRole('separator');
+    expect(dividers).toHaveLength(1);
+    expect(dividers[0]).toHaveTextContent('Step 2: Gravity on Earth');
+  });
+
   it('sends on Enter, and leaves Shift+Enter alone for the browser to insert a newline', async () => {
     streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
     renderChatScreen();
