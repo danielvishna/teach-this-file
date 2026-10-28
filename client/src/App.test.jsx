@@ -42,6 +42,7 @@ describe('App', () => {
     fireEvent.change(screen.getByLabelText(/gemini api key/i), { target: { value: 'the-real-api-key' } });
     const file = new File(['Gravity pulls things down.'], 'lesson.txt', { type: 'text/plain' });
     fireEvent.change(screen.getByLabelText(/file/i), { target: { files: [file] } });
+    await screen.findByText('lesson.txt');
     fireEvent.change(screen.getByLabelText(/teacher prompt/i), { target: { value: 'Teach this' } });
     fireEvent.click(screen.getByRole('button', { name: /build lesson/i }));
 

@@ -70,6 +70,20 @@
   a duplicate request or a client state bug). Chosen over resending the full prior-step history on
   an opening turn (more tokens, slower, and unnecessary — a one-line "you just finished X" fact is
   enough for a natural transition, the actual content of step X isn't needed to open step X+1).
+- **File validation runs on the client too, not only the server.** `client/src/validation/
+  fileRules.js` mirrors the server's rules — type, the 8 MiB byte cap, `.txt`'s 20,000-character
+  limit (read via `File.text()`, since the real limit is on character count, not bytes), and a
+  `.pdf`'s magic-byte header — so a file already known to be rejected never makes an upload round
+  trip at all. The server (`server/src/validation/fileValidation.js`) stays the real gatekeeper
+  and re-checks everything independently; the client copy is UX only, not a trust boundary (a
+  modified or scripted client could skip it entirely). Previously this was a known weakness
+  (oversized-file feedback was server-only); closed on request. The two limit constants
+  (`MAX_TEXT_LENGTH`, `MAX_UPLOAD_BYTES`) are duplicated, not shared, since client and server are
+  separate packages with no shared module today — each file's JSDoc says it mirrors the other as
+  the only thing keeping them in sync (architecture-guard review finding). Accepted as a
+  UX-correctness risk, not a security one (the server re-validates independently regardless): if
+  they ever drift, the worst case is the client rejecting a file the server would accept, not an
+  unsafe file getting through.
 
 ## What was decided not to do, and why
 
@@ -82,9 +96,6 @@
 
 ## Known weaknesses
 
-- **Oversized-file feedback is server-only, not instant.** Extension checks give immediate
-  inline feedback on file select; the 20,000-character text limit and 8 MiB PDF limit are checked
-  after an upload round-trip to the server. Client-side size checks would close part of this gap.
 - **PDF visual grounding cannot be verified byte-for-byte.** The server validates the lesson
   shape and requires a positive page number for every PDF-backed step, but it cannot prove that a
   model-generated description of a diagram or equation appears on that page. A stronger version

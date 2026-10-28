@@ -4,10 +4,10 @@
  * reducer actions only — the actual request lives in api/planApi.js
  * (CLAUDE.md's Architecture rule: no AI/validation logic inline here).
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { fetchLessonPlan } from '../api/planApi.js';
 import { useLesson } from '../state/LessonContext.jsx';
-import { isAllowedFileName } from '../validation/fileRules.js';
+import { validateFile } from '../validation/fileRules.js';
 
 /**
  * @param {{apiKey: string, onApiKeyChange: function(string): void}} props
@@ -21,17 +21,39 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
   const [teacherPrompt, setTeacherPrompt] = useState('');
   const [fileError, setFileError] = useState('');
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isCheckingFile, setIsCheckingFile] = useState(false);
+  // Guards against a slow validation (e.g. a large .txt's character count)
+  // losing a race with a faster one from a file picked right after it —
+  // only the result of the most recently started selectFile() call is
+  // ever allowed to touch state (test-sync-checker finding).
+  const selectionIdRef = useRef(0);
 
-  const canSubmit = Boolean(apiKey && file && teacherPrompt.trim());
+  const canSubmit = Boolean(apiKey && file && teacherPrompt.trim()) && !isCheckingFile;
 
   /**
-   * Applies the same client-side file rule to picker and drag-and-drop input.
+   * Runs every client-side file check (type, size, and — for a `.txt` or
+   * `.pdf` that passes those — content) before accepting a file, so a
+   * file already known to be rejected (e.g. a `.txt` over 20,000
+   * characters) never reaches the server at all. The server re-validates
+   * independently regardless; this is instant UX feedback, not the real
+   * gatekeeper (CLAUDE.md's Input limits rule, fileRules.js's own doc).
    * @param {?File} selected Browser file selected by either interaction.
-   * @return {void}
+   * @return {!Promise<void>}
    */
-  function selectFile(selected) {
-    if (selected && !isAllowedFileName(selected.name)) {
-      setFileError('Only .txt and .pdf files are supported right now.');
+  async function selectFile(selected) {
+    const selectionId = ++selectionIdRef.current;
+
+    if (!selected) {
+      setFileError('');
+      setFile(null);
+      return;
+    }
+    setIsCheckingFile(true);
+    const error = await validateFile(selected);
+    if (selectionId !== selectionIdRef.current) return; // superseded by a newer selection
+    setIsCheckingFile(false);
+    if (error) {
+      setFileError(error);
       setFile(null);
       return;
     }
@@ -115,7 +137,7 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
             Choose file
           </span>
           <span className="truncate font-normal text-gray-600">
-            {file ? file.name : 'or drag and drop a file here'}
+            {isCheckingFile ? 'Checking file…' : file ? file.name : 'or drag and drop a file here'}
           </span>
         </span>
         <input
