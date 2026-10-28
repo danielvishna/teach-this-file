@@ -61,6 +61,43 @@ Keep these as separate modules, not intermixed:
 - **AI logic** — prompt construction, the Gemini call(s), streaming, and response-schema
   validation live in their own module(s), separate from Express routing and from React.
 
+## Lesson planning, prompts & language
+
+- **v1 file scope: `.txt` only.** Other types (PDF, scanned pages, images-in-file) are out of
+  scope unless time remains — see DECISIONS.md. Reject anything else with a clear error, not a
+  silent failure or a crash.
+- **One AI call builds the lesson plan**, not a hand-written text chunker: send the full file
+  text + teacher prompt to Gemini, get back a structured-JSON step list (validated against a
+  schema per the Hard Rules above). Chosen over code-side chunking to keep steps coherent across
+  the whole document and to minimize hand-rolled parsing logic, consistent with this project's
+  "let AI do more, write less deterministic logic" direction. Revisit only if real test files
+  turn out too long for one call's context window — chunking is the documented fallback, not the
+  default.
+- **One adaptive master system prompt**, not a library of per-subject/per-age prompt snippets:
+  the model infers reading level, vocabulary and pacing itself from the teacher's prompt and the
+  file's content, rather than our code selecting from pre-written variants. Chosen for the same
+  reason as above (less code, scales to any subject/age combination without new code) — a
+  snippet library (option B) is the documented fallback if testing shows the model consistently
+  gets tone/level wrong for some case, in which case add one targeted snippet for that case only.
+- **Language**: the AI detects the file's language and the teacher prompt's language as part of
+  the same planning call, and decides the teaching language per the teacher's instruction
+  (falling back to the file's language if the prompt doesn't specify). This is a model decision,
+  not a separate language-detection library.
+- **RTL/LTR is per-message, not app-wide.** Each chat bubble's `dir` follows the language of
+  *that message's content* (so a Hebrew/Arabic tutor reply renders RTL even if the static UI
+  chrome — buttons, labels — stays LTR). Don't set `dir` once on the whole app.
+- **Guard against the student trying to derail the lesson in chat**, not only against
+  file-injection (a separate, already-covered risk — see Hard Rules). Kids are the most likely
+  to try to get the tutor off-topic or to do something unrelated to the lesson; the system prompt
+  must explicitly instruct the model to stay on the lesson/file regardless of what the student's
+  chat messages ask for.
+
+## Logging
+
+Structured `console.log`/`console.error` only (stdout) — Render captures this in its dashboard,
+no persistent log store needed for this project's scope. Log route, status, latency, and error
+type/message on AI-calling routes. **Never log the API key or the full uploaded file content.**
+
 ## Model choice
 
 Don't trust a model name from memory. Call the provider's `ListModels` endpoint for the actual

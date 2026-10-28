@@ -16,10 +16,22 @@
   enforcing that it stays accurate except doing so in the same commit as a route change.
 - **GitHub Actions CI** (lint + unit tests, both packages, every push) — catches a broken build
   or a regressed test before it's noticed manually, cheap to set up for a two-package repo.
+- **One AI call for the lesson plan, one adaptive master prompt for teaching style** (not
+  code-side chunking, not a per-subject/per-age prompt-snippet library) — deliberately leans on
+  the model to do more of the work the code would otherwise have to do by hand, which matters in
+  a 4-hour build. Full reasoning and the rejected alternative (option B, a snippet library) are
+  in [this design doc](https://claude.ai/artifact/6im8fsyH3kFhkgPR8W1Skd); option B stays the
+  documented fallback if testing shows the single prompt getting tone/level wrong.
 
 ## What was decided not to do, and why
 
-<!-- TODO -->
+- **File types beyond `.txt` for v1** (PDF, scanned pages, images-in-file) — out of scope unless
+  time remains at the end; the brief's "build for the unexpected" files still need a clear
+  rejection error for unsupported types, not silent failure.
+- **Code-side text chunking and a per-subject/per-age prompt-snippet library** — considered
+  (option B in the design doc above) and deliberately not the default: more dev time for a
+  4-hour build, for a predictability benefit we don't yet know we need. Kept as the documented
+  fallback.
 
 ## Known weaknesses
 
