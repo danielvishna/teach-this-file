@@ -159,9 +159,11 @@ export const openapiSpec = {
           'One HTTP request. The response body is newline-delimited JSON (JSONL), not a single ' +
           'JSON object: zero or more `{"type":"chunk","text":"..."}` lines as the reply streams, ' +
           'then exactly one trailing `{"type":"verdict","stepCompleted":boolean}` line before the ' +
-          'connection closes. stepCompleted is decided by a second, non-streamed call after the ' +
-          'reply finishes - never inferred from the streamed text. Omit studentMessage to open a ' +
-          'step (no prior student reply yet).',
+          'connection closes. On a turn with studentMessage, stepCompleted is decided by a ' +
+          'second, non-streamed call after the reply finishes - never inferred from the streamed ' +
+          'text. Omit studentMessage to open a step (no prior student reply yet); on that turn ' +
+          'the verdict call is skipped entirely and stepCompleted is hardcoded false, since a ' +
+          'step cannot be complete before the student has replied.',
         requestBody: {
           required: true,
           content: {

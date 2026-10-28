@@ -46,7 +46,11 @@ not just the first pass.
   simply asserting they understand ("I get it, move on") — the same untrusted-input principle as
   file content applies to chat messages feeding this call. If the verdict call itself fails
   (network/503), default to **not** completing the step (stay put) rather than guessing or
-  crashing — consistent with "fail visibly rather than guessing" above.
+  crashing — consistent with "fail visibly rather than guessing" above. **The turn that opens a
+  step (no student reply yet) skips the verdict call entirely and hardcodes `stepCompleted:
+  false`** — a step cannot be complete before the student has said anything, so this is a
+  structural guarantee rather than something left to the model to judge correctly, and it saves
+  a Gemini call on every step-opening turn.
 - **Streaming + Stop**: tutoring replies stream into the browser. The Stop button must cancel
   the client fetch and the upstream model call. Use `res.on('close')` for real client-disconnect
   detection, not `req.on('close')` (which fires as soon as body-parsing finishes, on every
@@ -119,8 +123,8 @@ Keep these as separate modules, not intermixed:
   chapter, generous for real school material, small enough to keep the planning call fast and
   cheap). Reject longer files with a clear error naming the limit. Revisit if real test files
   need more.
-- **`POST /api/plan`** `{ apiKey, fileText, teacherPrompt }` → `{ lessonPlan }` (one AI call, the
-  shape documented in `lessonReducer.js`, minus step `status`).
+- **`POST /api/plan`** multipart `{ apiKey, file, teacherPrompt }` → `{ lessonPlan }` (one AI
+  call, the shape documented in `lessonReducer.js`, minus step `status`).
 - **`POST /api/tutor-turn`** — one HTTP request, not two. The client makes a single `fetch`;
   the server runs two Gemini calls internally (the streamed reply, then the fast verdict call)
   and writes the result as newline-delimited JSON (JSONL) on the same response, closing the

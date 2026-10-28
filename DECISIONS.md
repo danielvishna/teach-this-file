@@ -43,6 +43,12 @@
 - **20,000-character limit on v1 text files** — generous for real school material (a long
   article/short chapter) while keeping the single planning call fast and cheap; not a context-
   window constraint (gemini-flash-lite's window is far larger).
+- **The turn that opens a step (no student reply yet) skips the verdict call entirely** and
+  hardcodes `stepCompleted: false`, instead of calling the model and trusting it to judge "no
+  evidence yet" as false. A step logically cannot be complete before the student has said
+  anything, so this is a structural guarantee rather than relying on the model to get an edge
+  case right every time — found via manual UI testing, where a step would occasionally complete
+  itself on the turn that merely opened it. Also saves a Gemini call on every step-opening turn.
 
 ## What was decided not to do, and why
 

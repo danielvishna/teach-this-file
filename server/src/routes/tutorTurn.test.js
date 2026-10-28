@@ -95,16 +95,30 @@ describe('POST /api/tutor-turn', () => {
   });
 
   it('streams chunk lines then a verdict line on success', async () => {
-    createGeminiClient.mockReturnValue(createMockAi({ chunks: ['Hello', ' there'], verdict: false }));
-    const res = await request(createApp()).post('/api/tutor-turn').send(VALID_BODY);
+    const mockAi = createMockAi({ chunks: ['Hello', ' there'], verdict: true });
+    createGeminiClient.mockReturnValue(mockAi);
+    const res = await request(createApp())
+      .post('/api/tutor-turn')
+      .send({ ...VALID_BODY, studentMessage: 'Because mass attracts mass.' });
 
     expect(res.status).toBe(200);
     const lines = parseLines(res);
     expect(lines).toEqual([
       { type: 'chunk', text: 'Hello' },
       { type: 'chunk', text: ' there' },
-      { type: 'verdict', stepCompleted: false },
+      { type: 'verdict', stepCompleted: true },
     ]);
+  });
+
+  it('skips the verdict call and hardcodes stepCompleted:false when opening a step (no studentMessage)', async () => {
+    const mockAi = createMockAi({ chunks: ['Hi there!'], verdict: true });
+    createGeminiClient.mockReturnValue(mockAi);
+    const res = await request(createApp()).post('/api/tutor-turn').send(VALID_BODY);
+
+    expect(res.status).toBe(200);
+    expect(mockAi.models.generateContent).not.toHaveBeenCalled();
+    const lines = parseLines(res);
+    expect(lines.at(-1)).toEqual({ type: 'verdict', stepCompleted: false });
   });
 
   it('passes the full exchange to the verdict call', async () => {
@@ -124,7 +138,9 @@ describe('POST /api/tutor-turn', () => {
     createGeminiClient.mockReturnValue(
       createMockAi({ chunks: ['Hello'], verdictError: new Error('verdict upstream exploded') })
     );
-    const res = await request(createApp()).post('/api/tutor-turn').send(VALID_BODY);
+    const res = await request(createApp())
+      .post('/api/tutor-turn')
+      .send({ ...VALID_BODY, studentMessage: 'My answer' });
 
     expect(res.status).toBe(200);
     const lines = parseLines(res);
@@ -146,7 +162,9 @@ describe('POST /api/tutor-turn', () => {
         verdict: true,
       })
     );
-    const res = await request(createApp()).post('/api/tutor-turn').send(VALID_BODY);
+    const res = await request(createApp())
+      .post('/api/tutor-turn')
+      .send({ ...VALID_BODY, studentMessage: 'My answer' });
 
     expect(res.status).toBe(200);
     const lines = parseLines(res);
@@ -186,7 +204,10 @@ describe('POST /api/tutor-turn', () => {
       },
     };
 
-    await handler({ body: VALID_BODY }, fakeRes);
+    // studentMessage is set so a missing verdict call is attributable to the
+    // abort path specifically, not to the separate "opening a step skips the
+    // verdict call" rule covered by its own test above.
+    await handler({ body: { ...VALID_BODY, studentMessage: 'My answer' } }, fakeRes);
 
     expect(ended).toBe(true);
     const lines = written.map((line) => JSON.parse(line));

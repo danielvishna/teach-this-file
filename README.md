@@ -49,8 +49,11 @@ both packages on every push.
 1. Open the app and paste a Gemini API key in the settings field (never stored server-side —
    sent with each request).
 2. Upload a file and write a teacher prompt (audience, language, tone, time limit, etc.).
-3. The AI builds a lesson plan from the file and opens a chat that teaches it step by step,
-   following your prompt.
+3. The AI builds a lesson plan, then opens a chat that teaches it step by step, following your
+   prompt — a visible "Step N of M" progress indicator, replies that stream in token by token
+   with a Stop button to cancel one mid-reply, and a "See source" toggle showing the exact
+   passage from your file behind the current step.
+4. Once the last step is marked complete, the chat shows a lesson-complete screen.
 
 ## Project structure
 
