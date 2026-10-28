@@ -72,11 +72,19 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
 
       <label className="flex flex-col gap-1 text-sm font-medium">
         File (.txt)
+        <span className="flex items-center gap-3 rounded border border-gray-300 px-3 py-2">
+          <span className="shrink-0 rounded bg-indigo-50 px-3 py-1 font-normal text-indigo-700">
+            Choose file
+          </span>
+          <span className="truncate font-normal text-gray-600">
+            {file ? file.name : 'No file chosen'}
+          </span>
+        </span>
         <input
           type="file"
           accept=".txt,text/plain"
           onChange={handleFileChange}
-          className="font-normal"
+          className="sr-only"
         />
       </label>
       {fileError && <p className="text-sm text-red-600">{fileError}</p>}
