@@ -84,13 +84,78 @@ retry + timeout + a clear "try again" message as a first-class feature, not bolt
 ## Documentation
 
 Follow the [Google JavaScript Style Guide](https://google.github.io/styleguide/jsguide.html#jsdoc)
-for JSDoc:
-- Every file starts with an `@fileoverview` block explaining its role and why it's a separate
-  module (ties back to the architecture rule above).
-- Every exported function/constant gets a JSDoc block: `@param {type} name description`,
-  `@return {type} description`, `@throws` when relevant.
-- Document the *why*/contract, not the obvious — skip JSDoc on trivial one-line helpers, never
-  restate what a line of code already makes clear.
+for JSDoc, supplemented by these conventions (so a reader who has never seen this repo can
+understand any file without opening a second one):
+- **Every file starts with an `@fileoverview` block**: what the module is responsible for, why
+  it's a separate module (ties back to the Architecture section), and anything a reader must
+  know before touching it (a non-obvious dependency, an invariant it relies on).
+- **Every exported function/constant/class gets a full JSDoc block**: a one-sentence summary,
+  `@param {type} name description` for each parameter, `@return {type} description`, `@throws`
+  when the function can throw and under what condition. Add a short `@example` for anything
+  whose call shape isn't obvious from the signature alone (e.g. a function taking an options
+  object, or returning a discriminated-union-shaped result).
+- **Document the *why*/contract, not the obvious.** Skip JSDoc on trivial one-line helpers where
+  the signature says everything; never restate what a line of code already makes clear. The
+  worst doc comment is one that just repeats the function name in English.
+- **Non-exported/internal helpers still get a short JSDoc block** when their behavior isn't
+  obvious from the name alone (a retry helper's return shape, a parser's edge-case handling).
+- **Place each comment immediately above the symbol it documents** and update it in the same
+  commit as any signature or behavior change — a stale doc comment is worse than none, because
+  it's actively misleading.
+- **React components**: document props via JSDoc (`@param {Object} props`, one line per prop)
+  even though JS has no type-checked prop interface — this is the contract a reader relies on.
+- **The reducer's action types and state shape get a single, authoritative JSDoc block** (in the
+  reducer's own file) listing every action type, its payload shape, and what it does to state —
+  this is the one piece of documentation every other module's author should be able to trust
+  without reading the reducer's implementation.
+
+## API documentation (OpenAPI)
+
+The server's HTTP API is documented as an OpenAPI 3.0 spec in `server/src/openapi.js`, written
+as a plain JS object (not a `.yaml` file + parser — avoids an extra dependency and keeps the
+spec next to the routes it describes, lowering the odds it silently drifts). Served via
+`swagger-ui-express`: raw JSON at `GET /api/openapi.json`, interactive UI at `GET /api/docs`.
+**Every route (new or changed) must update this spec in the same commit** — request/response
+shapes, error shapes, and auth (the `x-gemini-api-key` header convention), matching the actual
+route's behavior, not an aspirational one.
+
+## Testing
+
+- **Unit tests** (Vitest, both `client` and `server`): fast and deterministic — **the AI
+  provider is always mocked**, never a real network call. Cover reducer logic, validation/
+  schema code, prompt-construction helpers, and route handlers' request/response shaping. A
+  mocked AI client lives in a shared test-helpers module per package; don't hand-roll a new mock
+  per test file. **Every non-trivial change (new function, new route, new reducer action,
+  changed behavior) ships with a unit test covering it in the same commit** — tests are not a
+  follow-up task.
+- **AI-behavior testing** (real model calls) is a separate concern from unit tests — that's what
+  the `ai-behavior-tester` subagent and `DECISIONS.md`'s test-scenario table are for. Don't
+  conflate the two: a unit test that calls the real Gemini API is slow, flaky, costs money, and
+  tests the wrong thing (our code's logic, not the model's judgment).
+- **CI**: GitHub Actions (`.github/workflows/ci.yml`) runs lint + unit tests for both packages
+  on every push and PR. A red CI run blocks nothing automatically (no branch protection set up
+  for a solo assignment repo) but must be investigated before considering a change done.
+
+## Subagents
+
+- **`ai-behavior-tester`** — runs the brief's required AI-behavior scenarios against the live
+  app with a real model; see its own file for the scenario list.
+- **`architecture-guard`** — checks UI/state/ingestion/AI-logic stay in separate modules after a
+  round of feature work.
+- **`ui-functional-tester`** — drives the actual running app in the browser pane (upload, chat,
+  streaming, Stop, progress, source-passage view, mobile, loading/error/empty states) and
+  reports what genuinely works vs. what only looks right in the source.
+- **`docs-sync-checker`** — after a batch of commits, diffs them against `CLAUDE.md`,
+  `README.md`, `DECISIONS.md` and `server/src/openapi.js`, and flags anything that's now stale
+  or missing (a new route not in the OpenAPI spec, a changed state shape not reflected in the
+  reducer's doc block, a new env var not in `README.md`).
+- **`test-sync-checker`** — after code changes, checks whether existing unit tests still match
+  current behavior (not just whether they pass): a test asserting old behavior that happens to
+  still pass by coincidence, a changed function with no corresponding test update, a new branch/
+  edge case introduced without a new test.
+
+Use `architecture-guard`, `docs-sync-checker` and `test-sync-checker` proactively after each
+non-trivial round of changes, not only when something seems wrong.
 
 ## Process
 
