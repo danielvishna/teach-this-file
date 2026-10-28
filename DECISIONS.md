@@ -30,6 +30,15 @@
 - **The lesson plan also carries `subject` and `targetAudience`**, inferred by the same planning
   call, not just the step list — both feed the master prompt's tone/level and are worth keeping
   as explicit state (not re-derived per turn).
+- **One `fetch`/one HTTP request for a tutor turn, server-side JSONL stream** ending in a
+  trailing `{"type":"verdict",...}` line, rather than a second client-initiated request after
+  the streamed reply finishes. Keeps the client to one stream-reader loop and makes Stop trivial
+  (cancel the one request, nothing to coordinate across two).
+- **`multer` from the start**, even though v1 only accepts `.txt` — avoids re-architecting the
+  upload path when binary file types (images, PDF) are added later.
+- **20,000-character limit on v1 text files** — generous for real school material (a long
+  article/short chapter) while keeping the single planning call fast and cheap; not a context-
+  window constraint (gemini-flash-lite's window is far larger).
 
 ## What was decided not to do, and why
 

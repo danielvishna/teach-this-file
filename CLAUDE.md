@@ -110,6 +110,32 @@ Keep these as separate modules, not intermixed:
   must explicitly instruct the model to stay on the lesson/file regardless of what the student's
   chat messages ask for.
 
+## API routes & wire format
+
+- **File upload**: `multer`, multipart form data, even though v1 only accepts `.txt` — set up
+  once now so adding binary file types later (images, PDF) doesn't mean re-architecting the
+  upload path. Reject non-`.txt` mimetypes with a clear 400, not a silent failure.
+- **Text length limit for v1: 20,000 characters** (~3,500–4,000 words — a long article/short
+  chapter, generous for real school material, small enough to keep the planning call fast and
+  cheap). Reject longer files with a clear error naming the limit. Revisit if real test files
+  need more.
+- **`POST /api/plan`** `{ apiKey, fileText, teacherPrompt }` → `{ lessonPlan }` (one AI call, the
+  shape documented in `lessonReducer.js`, minus step `status`).
+- **`POST /api/tutor-turn`** — one HTTP request, not two. The client makes a single `fetch`;
+  the server runs two Gemini calls internally (the streamed reply, then the fast verdict call)
+  and writes the result as newline-delimited JSON (JSONL) on the same response, closing the
+  connection after the last line:
+  ```
+  {"type":"chunk","text":"..."}
+  {"type":"chunk","text":"..."}
+  {"type":"verdict","stepCompleted":false}
+  ```
+  The client reads the stream and appends each `chunk`'s text live; the trailing `verdict` line
+  drives `TUTOR_TURN_COMPLETE`. Chosen over two separate client-initiated requests (stream, then
+  a follow-up verdict call) because it keeps the client to one `fetch`/stream-reader loop and
+  makes Stop trivial — cancelling the one request cancels everything, instead of needing to track
+  "did the stream finish, should the follow-up verdict call even fire."
+
 ## Logging
 
 Structured `console.log`/`console.error` only (stdout) — Render captures this in its dashboard,
