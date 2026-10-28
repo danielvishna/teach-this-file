@@ -54,8 +54,15 @@ not just the first pass.
 
 Keep these as separate modules, not intermixed:
 - **UI** — presentational components, no AI calls or validation logic inline.
-- **Lesson/app state** — a reducer (`React Context` + `useReducer`) holding the lesson plan,
-  current step, student progress and chat transcript as explicit structured data.
+- **Lesson/app state** — a reducer (`React Context` + `useReducer`), `client/src/state/
+  lessonReducer.js`. The reducer's own JSDoc block is the authoritative source for the state
+  shape and every action type — don't duplicate it here, it will drift. Two decisions worth
+  flagging explicitly: the full uploaded file text is **discarded from state once planning
+  succeeds** (each step keeps only its own verified `sourceExcerpt`, not the whole file — keeps
+  state light and keeps later tutor-turn prompts small); and the Gemini API key is **never part
+  of this reducer's state** — it lives in local `useState` in the settings component only, and is
+  passed explicitly to each fetch call, so it can never end up logged or inspected via the shared
+  app state.
 - **File ingestion/validation** — upload handling and content extraction live in their own
   module, independent of the UI and of the AI-calling code.
 - **AI logic** — prompt construction, the Gemini call(s), streaming, and response-schema
