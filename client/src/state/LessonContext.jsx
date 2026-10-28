@@ -14,6 +14,9 @@
  * opened fresh. The Gemini API key is never part of this state (it
  * lives in App.jsx's local `useState`, per CLAUDE.md's Hard Rules), so
  * it's never written here either.
+ *
+ * Rehydration isn't a straight JSON round-trip — see
+ * sanitizeRehydratedState()'s doc comment for why.
  */
 import { createContext, useContext, useEffect, useReducer } from 'react';
 import { initialState, lessonReducer } from './lessonReducer.js';
@@ -25,11 +28,20 @@ const STORAGE_KEY = 'teach-this-file:lesson-state';
 
 /**
  * A reload drops any in-flight request, so a straight JSON round-trip
- * of the last-saved state isn't always safe to resume from: a
- * 'planning' phase with no plan yet has no AbortController left to
- * finish it, and a message still marked `streaming: true` has nothing
- * left writing to it. Both are repaired here rather than left to
- * confuse the UI into looking stuck.
+ * of the last-saved state isn't always safe to resume from:
+ * - A 'planning' phase with no plan yet has no AbortController left to
+ *   finish it, so it can't be resumed at all — back to `initialState`.
+ * - A message still marked `streaming: true` has nothing left writing
+ *   to it. If it already has text, it's marked stopped (matching what
+ *   the Stop button itself does — the partial reply stays, inert). If
+ *   it's still empty (saved right as `TUTOR_STREAM_STARTED` fired,
+ *   before the first chunk), it's dropped instead, the same way
+ *   `TUTOR_TURN_FAILED` drops an empty placeholder in
+ *   `lessonReducer.js`'s `dropIfEmptyStreamingPlaceholder` — left in
+ *   place, it would permanently block ChatScreen's step-opening effect
+ *   from ever re-firing for that step (its guard is
+ *   `currentStepMessages.length > 0`), stranding the student on a
+ *   lesson step with no tutor message and no way to resume it.
  * @param {!Object} state Freshly parsed, persisted state.
  * @return {!Object} State safe to resume the UI from.
  */
@@ -37,7 +49,9 @@ function sanitizeRehydratedState(state) {
   if (state.phase === 'planning') return initialState;
   return {
     ...state,
-    messages: state.messages.map((m) => (m.streaming ? { ...m, streaming: false } : m)),
+    messages: state.messages
+      .filter((m) => !(m.streaming && m.text === ''))
+      .map((m) => (m.streaming ? { ...m, streaming: false } : m)),
   };
 }
 

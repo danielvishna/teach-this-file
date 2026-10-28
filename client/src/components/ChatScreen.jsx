@@ -5,12 +5,11 @@
  * dispatches reducer actions; the fetch/stream-reading lives in
  * api/tutorTurnApi.js (CLAUDE.md's Architecture rule).
  */
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { streamTutorTurn } from '../api/tutorTurnApi.js';
 import { useLesson } from '../state/LessonContext.jsx';
 
 const RichMessage = lazy(() => import('./RichMessage.jsx'));
-
 /** @const {RegExp} Hebrew/Arabic Unicode ranges — rough but sufficient for picking a text direction. */
 const RTL_PATTERN = /[֐-׿؀-ۿ]/;
 
@@ -136,6 +135,7 @@ export function ChatScreen({ apiKey }) {
 
   const stepNumber = currentStepIndex + 1;
   const totalSteps = lessonPlan.steps.length;
+  const stepIndexById = new Map(lessonPlan.steps.map((s, i) => [s.id, i]));
 
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col p-4">
@@ -160,26 +160,48 @@ export function ChatScreen({ apiKey }) {
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto">
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === 'student' ? 'text-right' : 'text-left'}>
-            <div
-              dir={detectDir(m.text)}
-              className={`inline-block max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                m.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-900'
-              }`}
-            >
-              {m.text ? (
-                <Suspense fallback={<span>{m.text}</span>}>
-                  <RichMessage text={m.text} />
-                </Suspense>
-              ) : m.streaming ? (
-                '…'
-              ) : (
-                ''
+        {messages.map((m, i) => {
+          // A new step's opening message stacks right after the previous
+          // step's last reply with no visual break, which — found via live
+          // testing — reads as a confusing reset (same bubble style, often
+          // a similar "imagine a scenario" opening tone) instead of what it
+          // actually is: the lesson correctly advancing. This marks that
+          // boundary explicitly whenever a message's step differs from the
+          // one before it.
+          const prevStepId = messages[i - 1]?.stepId;
+          const stepIndex = stepIndexById.get(m.stepId);
+          const showStepDivider = i > 0 && m.stepId !== prevStepId && stepIndex !== undefined;
+
+          return (
+            <Fragment key={m.id}>
+              {showStepDivider && (
+                <div className="flex items-center gap-2 py-1 text-xs font-medium text-gray-400" role="separator">
+                  <span className="h-px flex-1 bg-gray-200" />
+                  Step {stepIndex + 1}: {lessonPlan.steps[stepIndex].title}
+                  <span className="h-px flex-1 bg-gray-200" />
+                </div>
               )}
-            </div>
-          </div>
-        ))}
+              <div className={m.role === 'student' ? 'text-right' : 'text-left'}>
+                <div
+                  dir={detectDir(m.text)}
+                  className={`inline-block max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                    m.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  {m.text ? (
+                    <Suspense fallback={<span>{m.text}</span>}>
+                      <RichMessage text={m.text} />
+                    </Suspense>
+                  ) : m.streaming ? (
+                    '…'
+                  ) : (
+                    ''
+                  )}
+                </div>
+              </div>
+            </Fragment>
+          );
+        })}
       </div>
 
       {turnError && <p className="mt-2 text-sm text-red-600">{turnError}</p>}

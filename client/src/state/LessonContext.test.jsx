@@ -77,7 +77,7 @@ describe('LessonProvider persistence', () => {
     expect(result.current.state.phase).toBe('setup');
   });
 
-  it('marks a persisted streaming message as stopped (nothing is still writing to it after a reload)', () => {
+  it('marks a persisted streaming message with partial text as stopped, not dropped', () => {
     sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -93,6 +93,31 @@ describe('LessonProvider persistence', () => {
 
     const { result } = renderHook(() => useLesson(), { wrapper: LessonProvider });
 
-    expect(result.current.state.messages[0].streaming).toBe(false);
+    expect(result.current.state.messages).toHaveLength(1);
+    expect(result.current.state.messages[0]).toMatchObject({ text: 'Mid-rep', streaming: false });
+  });
+
+  it('drops a persisted streaming placeholder that never got any text (saved right as the turn started)', () => {
+    // Reproduces a reload that lands between TUTOR_STREAM_STARTED and the
+    // first chunk: leaving an empty placeholder in `messages` would make
+    // ChatScreen.jsx's step-opening effect think the step was already
+    // opened (its guard is `currentStepMessages.length > 0`) and never
+    // retry it — a permanently blank, unrecoverable tutor turn.
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        phase: 'lesson',
+        teacherPrompt: 'Teach this',
+        fileName: 'lesson.txt',
+        lessonPlan: { title: 'Gravity', subject: 'physics', targetAudience: '7th', language: 'en', steps: [] },
+        currentStepIndex: 0,
+        messages: [{ id: 'm1', role: 'tutor', text: '', streaming: true, stepId: null }],
+        error: null,
+      })
+    );
+
+    const { result } = renderHook(() => useLesson(), { wrapper: LessonProvider });
+
+    expect(result.current.state.messages).toHaveLength(0);
   });
 });

@@ -88,7 +88,6 @@ describe('ChatScreen', () => {
     fireEvent.click(await screen.findByRole('button', { name: /see source/i }));
     expect(screen.getByText(/page 1: gravity pulls things down/i)).toBeInTheDocument();
   });
-
   it('sends a student message and renders it', async () => {
     streamTutorTurn.mockImplementationOnce(async ({ onChunk, onVerdict }) => {
       onChunk('Opening message');
@@ -174,24 +173,79 @@ describe('ChatScreen', () => {
     expect(screen.getByText('Step 2 opening')).toBeInTheDocument();
   });
 
-  it('sends on Enter and inserts a newline on Shift+Enter instead', async () => {
+  it('shows a step-transition divider where a new step begins, not between messages within a step', async () => {
+    const verdicts = [true, false];
+    let i = 0;
+    streamTutorTurn.mockImplementation(async ({ onChunk, onVerdict }) => {
+      onChunk(verdicts[i] ? 'Step 1 reply' : 'Step 2 opening');
+      onVerdict(verdicts[i++]);
+    });
+    renderChatScreen();
+
+    await waitFor(() => expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument());
+
+    // Exactly one divider: between step 1's last message and step 2's
+    // opening — not before step 1's own opening message (there is nothing
+    // to transition from yet).
+    const dividers = screen.getAllByRole('separator');
+    expect(dividers).toHaveLength(1);
+    expect(dividers[0]).toHaveTextContent('Step 2: Gravity on Earth');
+  });
+
+  it('sends on Enter, and leaves Shift+Enter alone for the browser to insert a newline', async () => {
     streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
     renderChatScreen();
     await waitFor(() => expect(streamTutorTurn).toHaveBeenCalledTimes(1));
 
     const input = screen.getByPlaceholderText(/type your answer/i);
-
     fireEvent.change(input, { target: { value: 'Line one' } });
-    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
-    // Shift+Enter must not submit — still waiting on the same one call.
+
+    // fireEvent's return value is the event's own (not canceled), i.e.
+    // whether preventDefault() was called — jsdom doesn't perform the
+    // browser's native "insert \n" action on keydown, so this is the only
+    // way to verify the handler actually leaves Shift+Enter alone instead
+    // of asserting a newline landed in the textarea's value.
+    const notPrevented = fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(notPrevented).toBe(true);
     expect(streamTutorTurn).toHaveBeenCalledTimes(1);
-    expect(input.value).toBe('Line one');
 
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(streamTutorTurn).toHaveBeenCalledTimes(2));
     expect(streamTutorTurn.mock.calls[1][0].studentMessage).toBe('Line one');
   });
 
+  it('resumes mid-step from sessionStorage without re-opening an already-answered step', async () => {
+    sessionStorage.setItem(
+      'teach-this-file:lesson-state',
+      JSON.stringify({
+        phase: 'lesson',
+        teacherPrompt: 'Teach this',
+        fileName: 'lesson.txt',
+        lessonPlan: LESSON_PLAN,
+        currentStepIndex: 0,
+        messages: [
+          { id: 'm1', role: 'tutor', text: 'Hello!', streaming: false, stepId: 'step_1' },
+          { id: 'm2', role: 'student', text: 'Mass attracts mass', streaming: false, stepId: 'step_1' },
+        ],
+        error: null,
+      })
+    );
+
+    // No Harness/PLANNING_SUCCEEDED dispatch here — LessonProvider must
+    // pick this up on its own via sessionStorage, the actual scenario the
+    // persistence feature exists for (resuming after a reload).
+    render(
+      <LessonProvider>
+        <ChatScreen apiKey="test-key" />
+      </LessonProvider>
+    );
+
+    expect(await screen.findByText('Hello!')).toBeInTheDocument();
+    expect(screen.getByText('Mass attracts mass')).toBeInTheDocument();
+    // The step already has messages, so the step-opening effect must not
+    // re-fire and re-ask the AI to open a step the student already answered.
+    expect(streamTutorTurn).not.toHaveBeenCalled();
+  });
   it('shows the lesson-complete message in the done phase', async () => {
     // true (complete step 1) -> false (stay on step 2's opening) -> true (student reply completes it).
     const verdicts = [true, false, true];
