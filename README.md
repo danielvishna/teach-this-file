@@ -48,11 +48,15 @@ both packages on every push.
 
 1. Open the app and paste a Gemini API key in the settings field (never stored server-side —
    sent with each request).
-2. Upload a file and write a teacher prompt (audience, language, tone, time limit, etc.).
+2. Upload a `.txt` file (up to 20,000 characters) or PDF (up to 8 MiB), then write a teacher
+   prompt (audience, language, tone, time limit, etc.). PDFs are sent to Gemini as native
+   documents, so scanned pages, images, diagrams, tables, and equations remain available to the
+   lesson planner.
 3. The AI builds a lesson plan, then opens a chat that teaches it step by step, following your
    prompt — a visible "Step N of M" progress indicator, replies that stream in token by token
-   with a Stop button to cancel one mid-reply, and a "See source" toggle showing the exact
-   passage from your file behind the current step.
+   with a Stop button to cancel one mid-reply, safe Markdown/KaTeX rendering for equations, and a
+   "See source" toggle showing the quote or PDF evidence behind the current step. PDF evidence
+   also names its source page.
 4. Once the last step is marked complete, the chat shows a lesson-complete screen.
 
 ## Project structure

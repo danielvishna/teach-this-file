@@ -24,6 +24,7 @@ const LESSON_PLAN = {
       title: 'What is gravity?',
       objective: 'Define it',
       sourceExcerpt: 'Gravity pulls things down.',
+      sourcePage: 1,
     },
     { id: 'step_2', title: 'Gravity on Earth', objective: 'Explain falling', sourceExcerpt: 'Objects fall at 9.8 m/s^2.' },
   ],
@@ -43,8 +44,14 @@ function renderChatScreen() {
   return render(
     <LessonProvider>
       <Harness />
+      <PhaseProbe />
     </LessonProvider>
   );
+}
+
+function PhaseProbe() {
+  const { state } = useLesson();
+  return <div data-testid="phase">{state.phase}</div>;
 }
 
 describe('ChatScreen', () => {
@@ -80,6 +87,13 @@ describe('ChatScreen', () => {
     expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
   });
 
+  it('shows the PDF page with the current step source evidence', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    renderChatScreen();
+
+    fireEvent.click(await screen.findByRole('button', { name: /see source/i }));
+    expect(screen.getByText(/page 1: gravity pulls things down/i)).toBeInTheDocument();
+  });
   it('sends a student message and renders it', async () => {
     streamTutorTurn.mockImplementationOnce(async ({ onChunk, onVerdict }) => {
       onChunk('Opening message');
@@ -163,6 +177,29 @@ describe('ChatScreen', () => {
 
     expect(signal.aborted).toBe(true);
     await waitFor(() => expect(screen.queryByRole('button', { name: /stop/i })).not.toBeInTheDocument());
+  });
+
+  it('cancels an active lesson and returns state to setup after confirmation', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderChatScreen();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('lesson'));
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel lesson/i }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('setup'));
+  });
+
+  it('keeps the lesson open when cancellation is declined', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderChatScreen();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('lesson'));
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel lesson/i }));
+
+    expect(screen.getByTestId('phase')).toHaveTextContent('lesson');
   });
 
   it('keeps step 1 messages visible in the transcript after advancing to step 2', async () => {
@@ -256,7 +293,6 @@ describe('ChatScreen', () => {
     // re-fire and re-ask the AI to open a step the student already answered.
     expect(streamTutorTurn).not.toHaveBeenCalled();
   });
-
   it('shows the lesson-complete message in the done phase', async () => {
     // true (complete step 1) -> false (stay on step 2's opening) -> true (student reply completes it).
     const verdicts = [true, false, true];
@@ -273,7 +309,7 @@ describe('ChatScreen', () => {
 
     // Regression: the done screen had no way back — clicking through
     // resets the lesson so the teacher can start over with a new file.
-    fireEvent.click(screen.getByRole('button', { name: /teach another file/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back to start/i }));
     expect(screen.queryByText(/lesson complete/i)).not.toBeInTheDocument();
   });
 });

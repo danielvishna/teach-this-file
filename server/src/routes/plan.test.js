@@ -35,6 +35,11 @@ const VALID_PLAN = {
   ],
 };
 
+const VALID_PDF_PLAN = {
+  ...VALID_PLAN,
+  steps: [{ ...VALID_PLAN.steps[0], sourceExcerpt: 'A diagram showing gravity.', sourcePage: 1 }],
+};
+
 /**
  * @param {string} text
  * @return {import('supertest').Test} A supertest request with a valid
@@ -102,9 +107,29 @@ describe('POST /api/plan', () => {
       .post('/api/plan')
       .field('apiKey', 'test-key')
       .field('teacherPrompt', 'Teach this')
-      .attach('file', Buffer.from('%PDF-1.4'), { filename: 'lesson.pdf', contentType: 'application/pdf' });
+      .attach('file', Buffer.from('slides'), { filename: 'lesson.pptx', contentType: 'application/octet-stream' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/unsupported file type/i);
+  });
+
+  it('passes an uploaded PDF to Gemini as native inline data', async () => {
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify(VALID_PDF_PLAN) });
+    createGeminiClient.mockReturnValue({ models: { generateContent } });
+
+    const pdfBytes = Buffer.from('%PDF-1.4\nmock visual document');
+    const res = await request(createApp())
+      .post('/api/plan')
+      .field('apiKey', 'test-key')
+      .field('teacherPrompt', 'Teach the diagram')
+      .attach('file', pdfBytes, { filename: 'lesson.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(200);
+    const contents = generateContent.mock.calls[0][0].contents;
+    expect(contents[0]).toEqual({
+      inlineData: { mimeType: 'application/pdf', data: pdfBytes.toString('base64') },
+    });
+    expect(contents[1].text).toContain('images, diagrams, tables, and equations');
+    expect(res.body.lessonPlan.steps[0].sourcePage).toBe(1);
   });
 
   it('returns 400 as JSON for a file over the character limit', async () => {
@@ -114,7 +139,7 @@ describe('POST /api/plan', () => {
   });
 
   it('returns 400 as JSON (not an unhandled 500) for a file over the raw byte cap', async () => {
-    const res = await postPlanWithFile('a'.repeat(600 * 1024));
+    const res = await postPlanWithFile('a'.repeat(9 * 1024 * 1024));
     expect(res.status).toBe(400);
     expect(res.body.error).toBeTruthy();
   });

@@ -35,7 +35,15 @@ const LESSON_PLAN_SCHEMA = {
           id: { type: 'string' },
           title: { type: 'string' },
           objective: { type: 'string' },
-          sourceExcerpt: { type: 'string', description: 'Verified exact substring of the uploaded file.' },
+          sourceExcerpt: {
+            type: 'string',
+            description: 'Exact text quote, or a faithful transcription/description of PDF evidence.',
+          },
+          sourcePage: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Required for PDF-backed steps; the 1-based page containing the evidence.',
+          },
         },
       },
     },
@@ -113,9 +121,10 @@ export const openapiSpec = {
       post: {
         summary: 'Build a lesson plan from an uploaded file and a teacher prompt',
         description:
-          'One AI call, structured JSON, schema-validated. Each step\'s sourceExcerpt is ' +
-          'verified server-side to be an exact substring of the uploaded file before the plan ' +
-          'is returned - see validation/lessonPlanSchema.js.',
+          'One AI call with structured, schema-validated output. Text excerpts are verified ' +
+          'server-side as exact substrings. PDFs are sent to Gemini natively so scanned text, ' +
+          'images, tables, diagrams, and equations remain visible; each PDF-backed step must ' +
+          'identify its 1-based sourcePage.',
         requestBody: {
           required: true,
           content: {
@@ -124,7 +133,11 @@ export const openapiSpec = {
                 type: 'object',
                 required: ['file', 'apiKey', 'teacherPrompt'],
                 properties: {
-                  file: { type: 'string', format: 'binary', description: 'A .txt file, max 20,000 characters.' },
+                  file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'A .txt file up to 20,000 characters, or a PDF up to 8 MiB.',
+                  },
                   apiKey: { type: 'string', description: 'Gemini API key, sent per-request.' },
                   teacherPrompt: { type: 'string', description: 'Audience, language, tone, time limit, etc.' },
                 },
@@ -142,7 +155,7 @@ export const openapiSpec = {
             },
           },
           400: {
-            description: 'Missing apiKey/teacherPrompt, no file, unsupported file type, or file too long.',
+            description: 'Missing fields, invalid/unsupported file, or exceeded text/PDF size limit.',
             content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
           },
           502: {

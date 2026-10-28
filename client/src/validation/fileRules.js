@@ -7,13 +7,13 @@
  * hand-written inline wherever a file input lives.
  */
 
-/** @const {RegExp} Matches a `.txt` filename, case-insensitive. */
-const TXT_EXTENSION = /\.txt$/i;
+/** @const {RegExp} Matches a supported filename, case-insensitive. */
+const SUPPORTED_EXTENSION = /\.(txt|pdf)$/i;
 
 /**
  * @param {string} fileName
  * @return {boolean} Whether the file's name looks like a supported type.
  */
 export function isAllowedFileName(fileName) {
-  return TXT_EXTENSION.test(fileName || '');
+  return SUPPORTED_EXTENSION.test(fileName || '');
 }

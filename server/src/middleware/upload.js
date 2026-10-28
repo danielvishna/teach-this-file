@@ -7,6 +7,7 @@
  * fileValidation.js, which is the authority on content, not size alone.
  */
 import multer from 'multer';
+import { MAX_UPLOAD_BYTES } from '../validation/fileValidation.js';
 
 /**
  * @const {number} Byte cap for the raw upload, generously above
@@ -14,8 +15,6 @@ import multer from 'multer';
  *     character can exceed 1) so a valid file is never rejected on byte
  *     count before the character-count check gets a chance to run.
  */
-const MAX_UPLOAD_BYTES = 500 * 1024;
-
 const multerInstance = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_BYTES },

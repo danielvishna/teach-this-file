@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+.rich-message > :first-child {
+  margin-top: 0;
+}
+
+.rich-message > :last-child {
+  margin-bottom: 0;
+}
+
+.rich-message p,
+.rich-message ul,
+.rich-message ol,
+.rich-message pre {
+  margin-block: 0.45rem;
+}
+
+.rich-message ul,
+.rich-message ol {
+  padding-inline-start: 1.25rem;
+}
+
+.rich-message ul {
+  list-style: disc;
+}
+
+.rich-message ol {
+  list-style: decimal;
+}
+
+.rich-message .katex,
+.rich-message .katex-display {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.rich-message .katex:not(.katex-display .katex) {
+  display: inline-block;
+  max-width: 100%;
+  margin-inline: 0.12em;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.rich-message .katex-display {
+  margin-block: 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  white-space: nowrap;
+}

@@ -21,7 +21,8 @@
  *       id: string,
  *       title: string,
  *       objective: string,
- *       sourceExcerpt: string,   // verified exact substring of the file
+ *       sourceExcerpt: string,   // exact text quote or faithful PDF evidence
+ *       sourcePage?: number,     // 1-based locator for PDF evidence
  *       status: 'pending' | 'active' | 'completed',
  *     }>,
  *   } | null,
@@ -38,9 +39,10 @@
  * ```
  *
  * Two decisions worth noting here (see CLAUDE.md's Architecture section):
- * - The full uploaded file text is never stored in this state. Only each
- *   step's own `sourceExcerpt` survives planning — kept deliberately
- *   small so later tutor-turn requests don't resend the whole file.
+ * - The full uploaded source is never stored in this state. Only each
+ *   step's own `sourceExcerpt` and optional PDF `sourcePage` survive
+ *   planning — kept deliberately small so later tutor-turn requests
+ *   don't resend the whole text or PDF bytes.
  * - The Gemini API key never lives here. It stays in local `useState` in
  *   the settings component and is passed explicitly to each fetch call,
  *   so it can never end up inspected via this shared state.
