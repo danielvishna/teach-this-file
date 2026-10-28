@@ -3,7 +3,9 @@
 A teacher uploads a file and writes a prompt; the app opens a chat in which an AI teaches the
 file's content to a student, following the teacher's prompt.
 
-- **Live app**: TODO
+- **Live app**: https://teach-this-file.vercel.app
+- **Live server**: https://teach-this-file.onrender.com (free tier — spins down after
+  inactivity, first request after idle can take 30–60s)
 - **AI provider**: Google Gemini (`gemini-flash-lite-latest`)
 
 ## Run locally
