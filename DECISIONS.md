@@ -5,9 +5,11 @@
 ## Main choices made, and why
 
 - **`zod` for schema validation** (`server/src/validation/lessonPlanSchema.js`): the lesson
-  plan's shape plus the grounding check (every step's `sourceExcerpt` is a real substring of the
-  file) both run through it. Lightweight, a near-standard choice for this kind of runtime
-  validation, avoids hand-rolling the shape checks ourselves.
+  plan's shape and source locators both run through it. Text steps still require a
+  `sourceExcerpt` that is an exact substring of the file. PDF steps require a positive
+  `sourcePage`, because evidence from a scanned page, diagram, or equation has no original text
+  string the server can compare with `includes`. This keeps the UI/state contract validated while
+  being honest about the weaker grounding guarantee for visual evidence.
 - **Vitest for unit tests (client + server), with the AI provider always mocked.** Chosen over
   Jest for native ESM/Vite integration (no transform config needed) and one consistent test
   runner across both packages. Unit tests never call the real Gemini API — that's slow, flaky,
@@ -38,17 +40,27 @@
   trailing `{"type":"verdict",...}` line, rather than a second client-initiated request after
   the streamed reply finishes. Keeps the client to one stream-reader loop and makes Stop trivial
   (cancel the one request, nothing to coordinate across two).
-- **`multer` from the start**, even though v1 only accepts `.txt` — avoids re-architecting the
-  upload path when binary file types (images, PDF) are added later.
+- **Native Gemini PDF input, rather than server-side text extraction.** PDFs up to 8 MiB are
+  passed as inline `application/pdf` data during the planning call. Gemini therefore sees the
+  rendered pages as well as extracted text, which covers scans, images, diagrams, tables, and
+  equations without adding a PDF/OCR dependency. The PDF is discarded after planning; later
+  tutor turns retain only each step's compact evidence and page locator.
+- **`multer` with in-memory storage** for `.txt` and `.pdf` uploads. The 8 MiB raw cap bounds
+  server memory and request cost; text files keep their separate 20,000-character limit.
 - **20,000-character limit on v1 text files** — generous for real school material (a long
   article/short chapter) while keeping the single planning call fast and cheap; not a context-
   window constraint (gemini-flash-lite's window is far larger).
+- **The turn that opens a step (no student reply yet) skips the verdict call entirely** and
+  hardcodes `stepCompleted: false`, instead of calling the model and trusting it to judge "no
+  evidence yet" as false. A step logically cannot be complete before the student has said
+  anything, so this is a structural guarantee rather than relying on the model to get an edge
+  case right every time — found via manual UI testing, where a step would occasionally complete
+  itself on the turn that merely opened it. Also saves a Gemini call on every step-opening turn.
 
 ## What was decided not to do, and why
 
-- **File types beyond `.txt` for v1** — out of scope unless time remains at the end; the brief's
-  "build for the unexpected" files still need a clear rejection error for unsupported types, not
-  silent failure. Priority order if time remains: images, PDF, presentations (PPT/PPTX).
+- **File types beyond `.txt` and `.pdf`** — images and presentations remain out of scope. They
+  receive a clear unsupported-file error rather than silent failure.
 - **Code-side text chunking and a per-subject/per-age prompt-snippet library** — considered
   (option B in the design doc above) and deliberately not the default: more dev time for a
   4-hour build, for a predictability benefit we don't yet know we need. Kept as the documented
@@ -56,10 +68,17 @@
 
 ## Known weaknesses
 
-- **Oversized-file feedback is server-only, not instant.** The `.txt`-only check gives immediate
-  inline feedback on file select; the 20,000-character limit is only checked after a full upload
-  round-trip to the server (confirmed via `ui-functional-tester`). A client-side character count
-  before upload would close this gap — deferred, not urgent enough to do now.
+- **Oversized-file feedback is server-only, not instant.** Extension checks give immediate
+  inline feedback on file select; the 20,000-character text limit and 8 MiB PDF limit are checked
+  after an upload round-trip to the server. Client-side size checks would close part of this gap.
+- **PDF visual grounding cannot be verified byte-for-byte.** The server validates the lesson
+  shape and requires a positive page number for every PDF-backed step, but it cannot prove that a
+  model-generated description of a diagram or equation appears on that page. A stronger version
+  would render and retain page thumbnails or crops and show the cited visual region directly.
+- **Tutor turns do not receive the original PDF.** After planning, tutoring relies on each step's
+  compact transcription/description and page locator. This keeps requests small, but a subtle
+  equation, image, or diagram can lose information during planning. A stronger multimodal flow
+  would retain bounded page images or crops and attach the relevant visual to each tutor turn.
 
 ## What I'd do with 4 more hours
 

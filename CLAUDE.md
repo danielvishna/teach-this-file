@@ -46,7 +46,11 @@ not just the first pass.
   simply asserting they understand ("I get it, move on") — the same untrusted-input principle as
   file content applies to chat messages feeding this call. If the verdict call itself fails
   (network/503), default to **not** completing the step (stay put) rather than guessing or
-  crashing — consistent with "fail visibly rather than guessing" above.
+  crashing — consistent with "fail visibly rather than guessing" above. **The turn that opens a
+  step (no student reply yet) skips the verdict call entirely and hardcodes `stepCompleted:
+  false`** — a step cannot be complete before the student has said anything, so this is a
+  structural guarantee rather than something left to the model to judge correctly, and it saves
+  a Gemini call on every step-opening turn.
 - **Streaming + Stop**: tutoring replies stream into the browser. The Stop button must cancel
   the client fetch and the upstream model call. Use `res.on('close')` for real client-disconnect
   detection, not `req.on('close')` (which fires as soon as body-parsing finishes, on every
@@ -65,9 +69,9 @@ Keep these as separate modules, not intermixed:
 - **Lesson/app state** — a reducer (`React Context` + `useReducer`), `client/src/state/
   lessonReducer.js`. The reducer's own JSDoc block is the authoritative source for the state
   shape and every action type — don't duplicate it here, it will drift. Two decisions worth
-  flagging explicitly: the full uploaded file text is **discarded from state once planning
-  succeeds** (each step keeps only its own verified `sourceExcerpt`, not the whole file — keeps
-  state light and keeps later tutor-turn prompts small); and the Gemini API key is **never part
+  flagging explicitly: the full uploaded source is **discarded from state once planning
+  succeeds** (each step keeps only its own `sourceExcerpt` and, for PDFs, `sourcePage`, not the
+  whole text or PDF bytes — keeps state light and keeps later tutor-turn prompts small); and the Gemini API key is **never part
   of this reducer's state** — it lives in local `useState` in the settings component only, and is
   passed explicitly to each fetch call, so it can never end up logged or inspected via the shared
   app state.
@@ -78,11 +82,13 @@ Keep these as separate modules, not intermixed:
 
 ## Lesson planning, prompts & language
 
-- **v1 file scope: `.txt` only.** Reject anything else with a clear error, not a silent failure
-  or a crash. Future file types, roughly in priority order if time remains: images, PDF,
+- **Supported file scope: `.txt` and `.pdf`.** Text is decoded and exact-quote grounded. PDFs
+  are sent to Gemini as native document input so scans, images, diagrams, tables, and equations
+  remain visible. Every PDF-backed lesson step carries a 1-based `sourcePage`; the PDF bytes are
+  discarded after planning. Reject other formats clearly. Future priority: images, then
   presentations (PPT/PPTX) — see DECISIONS.md.
-- **One AI call builds the lesson plan**, not a hand-written text chunker: send the full file
-  text + teacher prompt to Gemini, get back a structured-JSON step list (validated against a
+- **One AI call builds the lesson plan**, not a hand-written text chunker: send the decoded text
+  or native PDF together with the teacher prompt to Gemini, get back a structured-JSON step list (validated against a
   schema per the Hard Rules above). The plan also includes the inferred **subject** (the file's
   topic/field — science, history, art, etc.) and **target audience** (age bracket/grade,
   inferred from the teacher prompt), not just steps — both drive the master prompt's tone/level
@@ -112,15 +118,15 @@ Keep these as separate modules, not intermixed:
 
 ## API routes & wire format
 
-- **File upload**: `multer`, multipart form data, even though v1 only accepts `.txt` — set up
-  once now so adding binary file types later (images, PDF) doesn't mean re-architecting the
-  upload path. Reject non-`.txt` mimetypes with a clear 400, not a silent failure.
+- **File upload**: `multer` multipart form data with in-memory storage. Accept validated `.txt`
+  and `.pdf` files; reject extension/MIME mismatches and malformed PDF headers with a clear 400.
+  The raw upload cap is 8 MiB.
 - **Text length limit for v1: 20,000 characters** (~3,500–4,000 words — a long article/short
   chapter, generous for real school material, small enough to keep the planning call fast and
   cheap). Reject longer files with a clear error naming the limit. Revisit if real test files
   need more.
-- **`POST /api/plan`** `{ apiKey, fileText, teacherPrompt }` → `{ lessonPlan }` (one AI call, the
-  shape documented in `lessonReducer.js`, minus step `status`).
+- **`POST /api/plan`** multipart `{ apiKey, file, teacherPrompt }` → `{ lessonPlan }` (one AI
+  call, the shape documented in `lessonReducer.js`, minus step `status`).
 - **`POST /api/tutor-turn`** — one HTTP request, not two. The client makes a single `fetch`;
   the server runs two Gemini calls internally (the streamed reply, then the fast verdict call)
   and writes the result as newline-delimited JSON (JSONL) on the same response, closing the

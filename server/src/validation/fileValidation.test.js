@@ -3,7 +3,12 @@
  * no AI, no mocking needed.
  */
 import { describe, expect, it } from 'vitest';
-import { FileValidationError, MAX_TEXT_LENGTH, validateAndExtractText } from './fileValidation.js';
+import {
+  FileValidationError,
+  MAX_TEXT_LENGTH,
+  MAX_UPLOAD_BYTES,
+  validateAndPrepareSource,
+} from './fileValidation.js';
 
 /**
  * @param {string} text
@@ -19,46 +24,75 @@ function makeFile(text, overrides = {}) {
   };
 }
 
-describe('validateAndExtractText', () => {
-  it('returns the decoded text for a valid .txt file', () => {
-    expect(validateAndExtractText(makeFile('Gravity pulls things down.'))).toBe(
-      'Gravity pulls things down.'
-    );
+describe('validateAndPrepareSource', () => {
+  it('returns decoded text for a valid .txt file', () => {
+    expect(validateAndPrepareSource(makeFile('Gravity pulls things down.'))).toEqual({
+      kind: 'text',
+      text: 'Gravity pulls things down.',
+      mimeType: 'text/plain',
+    });
   });
 
   it('throws when no file is given', () => {
-    expect(() => validateAndExtractText(undefined)).toThrow(FileValidationError);
+    expect(() => validateAndPrepareSource(undefined)).toThrow(FileValidationError);
   });
 
-  it('throws for an unsupported mimetype without a .txt extension', () => {
+  it('returns intact bytes for a valid PDF', () => {
+    const file = makeFile('%PDF-1.4\nvisual content', {
+      mimetype: 'application/pdf',
+      originalname: 'lesson.pdf',
+    });
+    const source = validateAndPrepareSource(file);
+    expect(source).toMatchObject({ kind: 'pdf', mimeType: 'application/pdf' });
+    expect(source.buffer).toBe(file.buffer);
+  });
+
+  it('rejects a .pdf without a PDF header', () => {
     expect(() =>
-      validateAndExtractText(
-        makeFile('%PDF-1.4...', { mimetype: 'application/pdf', originalname: 'lesson.pdf' })
+      validateAndPrepareSource(
+        makeFile('not a pdf', { mimetype: 'application/pdf', originalname: 'lesson.pdf' })
+      )
+    ).toThrow(/valid PDF header/);
+  });
+
+  it('throws for an unsupported extension and mimetype', () => {
+    expect(() =>
+      validateAndPrepareSource(
+        makeFile('slides', { mimetype: 'application/vnd.ms-powerpoint', originalname: 'lesson.ppt' })
       )
     ).toThrow(/Unsupported file type/);
   });
 
   it('accepts a .txt extension even with a generic mimetype', () => {
     const file = makeFile('Hello', { mimetype: 'application/octet-stream' });
-    expect(validateAndExtractText(file)).toBe('Hello');
+    expect(validateAndPrepareSource(file).text).toBe('Hello');
   });
 
   it('throws for an empty file', () => {
-    expect(() => validateAndExtractText(makeFile('   \n  '))).toThrow(/empty/);
+    expect(() => validateAndPrepareSource(makeFile('   \n  '))).toThrow(/empty/);
   });
 
   it('accepts a file exactly at the character limit', () => {
     const text = 'a'.repeat(MAX_TEXT_LENGTH);
-    expect(validateAndExtractText(makeFile(text))).toHaveLength(MAX_TEXT_LENGTH);
+    expect(validateAndPrepareSource(makeFile(text)).text).toHaveLength(MAX_TEXT_LENGTH);
   });
 
   it('throws for a file over the character limit', () => {
     const text = 'a'.repeat(MAX_TEXT_LENGTH + 1);
-    expect(() => validateAndExtractText(makeFile(text))).toThrow(/too long/);
+    expect(() => validateAndPrepareSource(makeFile(text))).toThrow(/too long/);
+  });
+
+  it('throws for a raw file over the upload byte limit', () => {
+    const file = makeFile('a', {
+      buffer: Buffer.alloc(MAX_UPLOAD_BYTES + 1, 1),
+      mimetype: 'application/pdf',
+      originalname: 'lesson.pdf',
+    });
+    expect(() => validateAndPrepareSource(file)).toThrow(/too large/);
   });
 
   it('correctly decodes multi-byte UTF-8 (Hebrew) text', () => {
     const hebrew = 'כוח המשיכה הוא כוח הגורם לגופים למשוך זה את זה.';
-    expect(validateAndExtractText(makeFile(hebrew))).toBe(hebrew);
+    expect(validateAndPrepareSource(makeFile(hebrew)).text).toBe(hebrew);
   });
 });

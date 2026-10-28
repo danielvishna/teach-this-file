@@ -3,4 +3,10 @@ dist/
 .env
 .env.local
 *.log
+*.aux
+*.out
 .DS_Store
+
+# Local Codex instructions and repository skills
+/AGENTS.md
+/.agents/

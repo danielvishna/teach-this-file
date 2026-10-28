@@ -6,6 +6,7 @@
  * needs it for a fetch call.
  */
 import { useState } from 'react';
+import { ChatScreen } from './components/ChatScreen.jsx';
 import { ErrorScreen } from './components/ErrorScreen.jsx';
 import { PlanningScreen } from './components/PlanningScreen.jsx';
 import { SetupScreen } from './components/SetupScreen.jsx';
@@ -27,15 +28,8 @@ function AppContent() {
     return <ErrorScreen error={state.error} onRetry={() => dispatch({ type: 'RESET' })} />;
   }
 
-  // phase is 'lesson' or 'done' — the chat screen lands in a later step.
-  return (
-    <div className="mx-auto max-w-md p-6">
-      <h1 className="text-xl font-semibold">{state.lessonPlan?.title}</h1>
-      <p className="text-sm text-gray-500">
-        {state.lessonPlan?.steps.length} steps planned. Chat screen coming next.
-      </p>
-    </div>
-  );
+  // phase is 'lesson' or 'done'
+  return <ChatScreen apiKey={apiKey} />;
 }
 
 export default function App() {

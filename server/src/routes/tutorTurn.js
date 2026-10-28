@@ -88,11 +88,17 @@ tutorTurnRouter.post('/', async (req, res) => {
     return res.end();
   }
 
+  // A step can't be complete before the student has said anything — skip
+  // the verdict call entirely on the turn that opens a step (no
+  // studentMessage yet) rather than relying on the model to judge "no
+  // evidence" as false. Structural guarantee, and one fewer Gemini call.
   let stepCompleted = false;
-  try {
-    stepCompleted = await judgeStepCompletion({ ai, step, history, studentMessage, tutorReply: streamedText });
-  } catch (err) {
-    console.error(`POST /api/tutor-turn verdict failed, defaulting stepCompleted=false: ${err.message}`);
+  if (studentMessage) {
+    try {
+      stepCompleted = await judgeStepCompletion({ ai, step, history, studentMessage, tutorReply: streamedText });
+    } catch (err) {
+      console.error(`POST /api/tutor-turn verdict failed, defaulting stepCompleted=false: ${err.message}`);
+    }
   }
 
   res.write(`${JSON.stringify({ type: 'verdict', stepCompleted })}\n`);

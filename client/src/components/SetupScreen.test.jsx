@@ -40,12 +40,47 @@ describe('SetupScreen', () => {
     expect(screen.getByRole('button', { name: /build lesson/i })).toBeDisabled();
   });
 
-  it('rejects a non-.txt file with a clear message and keeps submit disabled', () => {
+  it('accepts a PDF file', () => {
     renderSetupScreen();
     const file = new File(['%PDF'], 'lesson.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText(/file/i), { target: { files: [file] } });
 
-    expect(screen.getByText(/only \.txt files/i)).toBeInTheDocument();
+    expect(screen.getByText('lesson.pdf')).toBeInTheDocument();
+    expect(screen.queryByText(/only \.txt and \.pdf files/i)).not.toBeInTheDocument();
+  });
+
+  it('accepts a PDF dropped onto the file area', () => {
+    renderSetupScreen();
+    const file = new File(['%PDF'], 'dropped-lesson.pdf', { type: 'application/pdf' });
+
+    fireEvent.drop(screen.getByTestId('file-drop-zone'), {
+      dataTransfer: { files: [file] },
+    });
+
+    expect(screen.getByText('dropped-lesson.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows drag feedback and rejects an unsupported dropped file', () => {
+    renderSetupScreen();
+    const dropZone = screen.getByTestId('file-drop-zone');
+    const file = new File(['slides'], 'lesson.pptx', { type: 'application/vnd.ms-powerpoint' });
+
+    fireEvent.dragOver(dropZone, { dataTransfer: { dropEffect: 'none' } });
+    expect(dropZone.firstElementChild).toHaveClass('border-indigo-500');
+
+    fireEvent.drop(dropZone, { dataTransfer: { files: [file] } });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/only \.txt and \.pdf files/i);
+    expect(screen.getByRole('button', { name: /build lesson/i })).toBeDisabled();
+  });
+
+  it('rejects an unsupported file with a clear message and keeps submit disabled', () => {
+    renderSetupScreen();
+    const file = new File(['slides'], 'lesson.pptx', { type: 'application/vnd.ms-powerpoint' });
+    fireEvent.change(screen.getByLabelText(/file/i), { target: { files: [file] } });
+
+    expect(screen.getByText(/only \.txt and \.pdf files/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /build lesson/i })).toBeDisabled();
   });
 
