@@ -1,6 +1,14 @@
 import { useState } from 'react'
 
 /**
+ * Base URL for the Express server. In dev, Vite's proxy handles relative
+ * `/api/*` requests (see vite.config.js), so this is left empty. In
+ * production the client and server are separate Vercel/Render deployments,
+ * so this must point at the deployed server's absolute URL.
+ */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
+/**
  * Temporary smoke-test screen: paste an API key, hit one hardcoded request
  * to the server, show the result. Verifies client/server/AI-provider wiring
  * end to end before any real feature is built, per the practice-run lessons.
@@ -14,7 +22,7 @@ function App() {
     setStatus('loading')
     setResult('')
     try {
-      const res = await fetch('/api/smoke-test', {
+      const res = await fetch(`${API_BASE_URL}/api/smoke-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey }),
