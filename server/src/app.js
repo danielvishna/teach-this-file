@@ -11,6 +11,7 @@ import swaggerUi from 'swagger-ui-express';
 import { openapiSpec } from './openapi.js';
 import { planRouter } from './routes/plan.js';
 import { smokeTestRouter } from './routes/smokeTest.js';
+import { tutorTurnRouter } from './routes/tutorTurn.js';
 
 /**
  * @return {import('express').Express} A configured Express app, not yet
@@ -23,6 +24,7 @@ export function createApp() {
 
   app.use('/api/smoke-test', smokeTestRouter);
   app.use('/api/plan', planRouter);
+  app.use('/api/tutor-turn', tutorTurnRouter);
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });

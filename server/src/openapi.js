@@ -152,5 +152,59 @@ export const openapiSpec = {
         },
       },
     },
+    '/api/tutor-turn': {
+      post: {
+        summary: 'One tutor turn: stream a reply, then a trailing verdict line',
+        description:
+          'One HTTP request. The response body is newline-delimited JSON (JSONL), not a single ' +
+          'JSON object: zero or more `{"type":"chunk","text":"..."}` lines as the reply streams, ' +
+          'then exactly one trailing `{"type":"verdict","stepCompleted":boolean}` line before the ' +
+          'connection closes. stepCompleted is decided by a second, non-streamed call after the ' +
+          'reply finishes - never inferred from the streamed text. Omit studentMessage to open a ' +
+          'step (no prior student reply yet).',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['teacherPrompt', 'subject', 'targetAudience', 'language', 'step'],
+                properties: {
+                  apiKey: { type: 'string', description: 'Gemini API key, sent per-request.' },
+                  teacherPrompt: { type: 'string' },
+                  subject: { type: 'string' },
+                  targetAudience: { type: 'string' },
+                  language: { type: 'string' },
+                  step: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      objective: { type: 'string' },
+                      sourceExcerpt: { type: 'string' },
+                    },
+                  },
+                  history: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: { role: { type: 'string', enum: ['tutor', 'student'] }, text: { type: 'string' } },
+                    },
+                  },
+                  studentMessage: { type: 'string', description: 'Omitted when opening a step.' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'JSONL stream: chunk lines, then one verdict line.',
+            content: { 'text/plain': { schema: { type: 'string', example: '{"type":"chunk","text":"..."}\n{"type":"verdict","stepCompleted":false}\n' } } },
+          },
+          400: { description: 'Missing apiKey, or an invalid request body.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          502: { description: 'The AI provider failed before any text was streamed.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+        },
+      },
+    },
   },
 };

@@ -197,8 +197,8 @@ as a plain JS object (not a `.yaml` file + parser — avoids an extra dependency
 spec next to the routes it describes, lowering the odds it silently drifts). Served via
 `swagger-ui-express`: raw JSON at `GET /api/openapi.json`, interactive UI at `GET /api/docs`.
 **Every route (new or changed) must update this spec in the same commit** — request/response
-shapes, error shapes, and auth (the `x-gemini-api-key` header convention), matching the actual
-route's behavior, not an aspirational one.
+shapes, error shapes, and auth (the `apiKey` body-field convention), matching the actual route's
+behavior, not an aspirational one.
 
 ## Testing
 
