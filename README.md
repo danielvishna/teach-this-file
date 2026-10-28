@@ -54,8 +54,9 @@ both packages on every push.
    lesson planner.
 3. The AI builds a lesson plan, then opens a chat that teaches it step by step, following your
    prompt — a visible "Step N of M" progress indicator, replies that stream in token by token
-   with a Stop button to cancel one mid-reply, and a "See source" toggle showing the exact
-   passage from your file behind the current step. PDF evidence also names its source page.
+   with a Stop button to cancel one mid-reply, safe Markdown/KaTeX rendering for equations, and a
+   "See source" toggle showing the quote or PDF evidence behind the current step. PDF evidence
+   also names its source page.
 4. Once the last step is marked complete, the chat shows a lesson-complete screen.
 
 ## Project structure

@@ -47,6 +47,11 @@
   tutor turns retain only each step's compact evidence and page locator.
 - **`multer` with in-memory storage** for `.txt` and `.pdf` uploads. The 8 MiB raw cap bounds
   server memory and request cost; text files keep their separate 20,000-character limit.
+- **`react-markdown` + `remark-math` + `rehype-katex` for tutor messages.** Tutor output needs
+  readable equations and basic Markdown, but remains untrusted model text. ReactMarkdown leaves
+  raw HTML disabled, while KaTeX renders both dollar-delimited math and normalized `\\(...\\)` /
+  `\\[...\\]` model output. The renderer is lazy-loaded so these libraries do not enlarge the
+  initial upload screen bundle.
 - **20,000-character limit on v1 text files** — generous for real school material (a long
   article/short chapter) while keeping the single planning call fast and cheap; not a context-
   window constraint (gemini-flash-lite's window is far larger).
@@ -79,6 +84,8 @@
   compact transcription/description and page locator. This keeps requests small, but a subtle
   equation, image, or diagram can lose information during planning. A stronger multimodal flow
   would retain bounded page images or crops and attach the relevant visual to each tutor turn.
+  The planner is instructed to retain relevant examples, table rows, units, equations, and
+  diagram directions in each step's evidence, but that remains a model-generated transcription.
 
 ## What I'd do with 4 more hours
 

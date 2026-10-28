@@ -5,9 +5,11 @@
  * dispatches reducer actions; the fetch/stream-reading lives in
  * api/tutorTurnApi.js (CLAUDE.md's Architecture rule).
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { streamTutorTurn } from '../api/tutorTurnApi.js';
 import { useLesson } from '../state/LessonContext.jsx';
+
+const RichMessage = lazy(() => import('./RichMessage.jsx'));
 
 /** @const {RegExp} Hebrew/Arabic Unicode ranges — rough but sufficient for picking a text direction. */
 const RTL_PATTERN = /[֐-׿؀-ۿ]/;
@@ -166,7 +168,15 @@ export function ChatScreen({ apiKey }) {
                 m.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-900'
               }`}
             >
-              {m.text || (m.streaming ? '…' : '')}
+              {m.text ? (
+                <Suspense fallback={<span>{m.text}</span>}>
+                  <RichMessage text={m.text} />
+                </Suspense>
+              ) : m.streaming ? (
+                '…'
+              ) : (
+                ''
+              )}
             </div>
           </div>
         ))}

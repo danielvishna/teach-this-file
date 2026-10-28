@@ -19,7 +19,7 @@ export function buildPlanningPrompt({ sourceKind, fileText, teacherPrompt }) {
       : `SOURCE TEXT:\n${fileText}`;
   const sourceEvidenceRule =
     sourceKind === 'pdf'
-      ? `- "sourceExcerpt": a concise, faithful transcription or description of the exact evidence on the cited page. Preserve equations and labels accurately; do not invent details.\n- "sourcePage": the 1-based PDF page number containing that evidence.`
+      ? `- "sourceExcerpt": a faithful transcription or description of the evidence needed to teach this step. Include relevant worked examples, table rows/headers, equation definitions, units, and diagram labels/directions when they support the objective; do not omit them merely to be concise. Preserve equations and labels accurately; do not invent details.\n- "sourcePage": the 1-based PDF page number containing that evidence.`
       : `- "sourceExcerpt": an exact, verbatim quote copied character-for-character from SOURCE TEXT (never paraphrased, never invented). Do not return sourcePage.`;
 
   return `You are an expert curriculum designer. Build a short, step-by-step lesson plan that teaches the source file, following TEACHER_PROMPT's instructions (audience, language, tone, time limit, subject focus — whatever it states).
