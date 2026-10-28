@@ -44,8 +44,14 @@ function renderChatScreen() {
   return render(
     <LessonProvider>
       <Harness />
+      <PhaseProbe />
     </LessonProvider>
   );
+}
+
+function PhaseProbe() {
+  const { state } = useLesson();
+  return <div data-testid="phase">{state.phase}</div>;
 }
 
 describe('ChatScreen', () => {
@@ -153,6 +159,29 @@ describe('ChatScreen', () => {
 
     expect(signal.aborted).toBe(true);
     await waitFor(() => expect(screen.queryByRole('button', { name: /stop/i })).not.toBeInTheDocument());
+  });
+
+  it('cancels an active lesson and returns state to setup after confirmation', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderChatScreen();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('lesson'));
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel lesson/i }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('setup'));
+  });
+
+  it('keeps the lesson open when cancellation is declined', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderChatScreen();
+    await waitFor(() => expect(screen.getByTestId('phase')).toHaveTextContent('lesson'));
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel lesson/i }));
+
+    expect(screen.getByTestId('phase')).toHaveTextContent('lesson');
   });
 
   it('keeps step 1 messages visible in the transcript after advancing to step 2', async () => {

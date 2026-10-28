@@ -81,7 +81,7 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-6">
+    <form onSubmit={handleSubmit} className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 overflow-x-hidden p-4 sm:p-6">
       <h1 className="text-xl font-semibold">Teach this file</h1>
       <p className="text-sm text-gray-500">
         Upload a text or PDF file and tell the AI how to teach it.
@@ -94,7 +94,7 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
           value={apiKey}
           onChange={(e) => onApiKeyChange(e.target.value)}
           placeholder="Paste your key — never stored"
-          className="rounded border border-gray-300 px-3 py-2 font-normal"
+          className="min-h-11 rounded border border-gray-300 px-3 py-2 text-base font-normal"
         />
       </label>
 
@@ -138,14 +138,14 @@ export function SetupScreen({ apiKey, onApiKeyChange }) {
           onChange={(e) => setTeacherPrompt(e.target.value)}
           rows={4}
           placeholder='e.g. "Teach this to 7th graders, in French, Socratic style, under 15 minutes."'
-          className="rounded border border-gray-300 px-3 py-2 font-normal"
+          className="rounded border border-gray-300 px-3 py-2 text-base font-normal"
         />
       </label>
 
       <button
         type="submit"
         disabled={!canSubmit}
-        className="rounded bg-indigo-600 px-3 py-2 text-white disabled:opacity-50"
+        className="min-h-11 rounded bg-indigo-600 px-3 py-2 text-white disabled:opacity-50"
       >
         Build lesson
       </button>

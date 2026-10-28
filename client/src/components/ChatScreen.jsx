@@ -124,11 +124,25 @@ export function ChatScreen({ apiKey }) {
     abortRef.current?.abort();
   }
 
+  /** Ends the current lesson after confirmation and cancels any active stream. */
+  function handleCancelLesson() {
+    if (!window.confirm('Cancel this lesson and return to the start screen?')) return;
+    abortRef.current?.abort();
+    dispatch({ type: 'RESET' });
+  }
+
   if (phase === 'done') {
     return (
-      <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
         <h1 className="text-xl font-semibold">{lessonPlan.title}</h1>
         <p className="text-gray-600">Lesson complete — nice work!</p>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'RESET' })}
+          className="min-h-11 rounded bg-indigo-600 px-4 py-2 text-white"
+        >
+          Back to start
+        </button>
       </div>
     );
   }
@@ -138,9 +152,18 @@ export function ChatScreen({ apiKey }) {
   const stepIndexById = new Map(lessonPlan.steps.map((s, i) => [s.id, i]));
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-md flex-col p-4">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col overflow-x-hidden px-3 pt-3 sm:px-4 sm:pt-4">
       <header className="mb-3 border-b border-gray-200 pb-3">
-        <h1 className="text-lg font-semibold">{lessonPlan.title}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="min-w-0 break-words text-lg font-semibold">{lessonPlan.title}</h1>
+          <button
+            type="button"
+            onClick={handleCancelLesson}
+            className="min-h-11 shrink-0 rounded px-2 text-sm text-gray-600 underline decoration-gray-300 underline-offset-2"
+          >
+            Cancel lesson
+          </button>
+        </div>
         <p className="text-sm text-gray-500">
           Step {stepNumber} of {totalSteps}: {currentStep.title}
         </p>
@@ -152,14 +175,17 @@ export function ChatScreen({ apiKey }) {
           {showSource ? 'Hide source' : 'See source'}
         </button>
         {showSource && (
-          <p dir={detectDir(currentStep.sourceExcerpt)} className="mt-1 rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
+          <p
+            dir={detectDir(currentStep.sourceExcerpt)}
+            className="mt-1 max-h-40 overflow-auto break-words rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600"
+          >
             {currentStep.sourcePage ? `Page ${currentStep.sourcePage}: ` : ''}
             {currentStep.sourceExcerpt}
           </p>
         )}
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto">
+      <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto pb-3">
         {messages.map((m, i) => {
           // A new step's opening message stacks right after the previous
           // step's last reply with no visual break, which — found via live
@@ -184,7 +210,7 @@ export function ChatScreen({ apiKey }) {
               <div className={m.role === 'student' ? 'text-right' : 'text-left'}>
                 <div
                   dir={detectDir(m.text)}
-                  className={`inline-block max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  className={`inline-block max-w-[92%] overflow-hidden break-words rounded-lg px-3 py-2 text-sm sm:max-w-[85%] ${
                     m.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-900'
                   }`}
                 >
@@ -206,7 +232,10 @@ export function ChatScreen({ apiKey }) {
 
       {turnError && <p className="mt-2 text-sm text-red-600">{turnError}</p>}
 
-      <form onSubmit={handleSend} className="mt-3 flex gap-2">
+      <form
+        onSubmit={handleSend}
+        className="sticky bottom-0 -mx-3 mt-3 flex items-end gap-2 border-t border-gray-100 bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:-mx-4 sm:px-4"
+      >
         <textarea
           ref={inputRef}
           value={studentInput}
@@ -215,13 +244,13 @@ export function ChatScreen({ apiKey }) {
           placeholder="Type your answer…"
           disabled={isStreaming}
           rows={1}
-          className="max-h-32 flex-1 resize-none overflow-y-auto rounded border border-gray-300 px-3 py-2 text-sm leading-snug disabled:opacity-50"
+          className="min-h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded border border-gray-300 px-3 py-2 text-base leading-snug disabled:opacity-50 sm:text-sm"
         />
         {isStreaming ? (
           <button
             type="button"
             onClick={handleStop}
-            className="rounded bg-red-600 px-3 py-2 text-sm text-white"
+            className="min-h-11 shrink-0 rounded bg-red-600 px-3 py-2 text-sm text-white"
           >
             Stop
           </button>
@@ -229,7 +258,7 @@ export function ChatScreen({ apiKey }) {
           <button
             type="submit"
             disabled={!studentInput.trim()}
-            className="rounded bg-indigo-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded bg-indigo-600 px-3 py-2 text-sm text-white disabled:opacity-50"
           >
             Send
           </button>
