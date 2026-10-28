@@ -30,5 +30,6 @@ describe('buildTutorPrompt', () => {
 
     expect(prompt).toContain('use $...$ for inline math and $$...$$ for display math');
     expect(prompt).toContain('Do not use raw HTML');
+    expect(prompt).toContain('Do not embed a complete equation inside an RTL sentence');
   });
 });

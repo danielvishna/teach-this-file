@@ -19,6 +19,16 @@ describe('RichMessage', () => {
     expect(container.querySelector('.katex-display')).toBeInTheDocument();
   });
 
+  it('keeps multiple formulas renderable inside an RTL message', () => {
+    const { container } = render(
+      <div dir="rtl">
+        <RichMessage text={'המהירות היא $v(t)=v_0+at$ והאנרגיה היא $E_k=\\frac{1}{2}mv^2$.'} />
+      </div>
+    );
+
+    expect(container.querySelectorAll('.katex')).toHaveLength(2);
+  });
+
   it('does not interpret raw HTML from an untrusted message', () => {
     const { container } = render(<RichMessage text={'<img src=x onerror="alert(1)">'} />);
 

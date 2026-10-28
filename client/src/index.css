@@ -34,9 +34,18 @@
   unicode-bidi: isolate;
 }
 
+.rich-message .katex:not(.katex-display .katex) {
+  display: inline-block;
+  max-width: 100%;
+  margin-inline: 0.12em;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
 .rich-message .katex-display {
   margin-block: 0.65rem;
   overflow-x: auto;
   overflow-y: hidden;
   text-align: center;
+  white-space: nowrap;
 }
