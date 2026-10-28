@@ -1,18 +1,12 @@
-import cors from 'cors';
+/**
+ * @fileoverview Process entrypoint: loads env vars and starts the HTTP
+ * listener for the app built in app.js. Kept separate from app.js so
+ * tests can import the app without binding a port.
+ */
 import 'dotenv/config';
-import express from 'express';
-import { smokeTestRouter } from './routes/smokeTest.js';
+import { createApp } from './app.js';
 
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
-
-app.use('/api/smoke-test', smokeTestRouter);
-
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
-});
-
+const app = createApp();
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
