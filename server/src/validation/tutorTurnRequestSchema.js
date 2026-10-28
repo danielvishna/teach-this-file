@@ -25,13 +25,28 @@ const historyMessageSchema = z.object({
 });
 
 /** @const {!z.ZodType} */
-export const tutorTurnRequestSchema = z.object({
-  teacherPrompt: z.string().min(1).max(2000),
-  subject: z.string().min(1).max(200),
-  targetAudience: z.string().min(1).max(200),
-  language: z.string().min(1).max(100),
-  step: stepContextSchema,
-  history: z.array(historyMessageSchema).max(50).default([]),
-  // Absent on the call that opens a step; present once the student replies.
-  studentMessage: z.string().min(1).max(5000).optional(),
-});
+export const tutorTurnRequestSchema = z
+  .object({
+    teacherPrompt: z.string().min(1).max(2000),
+    subject: z.string().min(1).max(200),
+    targetAudience: z.string().min(1).max(200),
+    language: z.string().min(1).max(100),
+    step: stepContextSchema,
+    history: z.array(historyMessageSchema).max(50).default([]),
+    // Absent on the call that opens a step; present once the student replies.
+    studentMessage: z.string().min(1).max(5000).optional(),
+    // 1-based. Lets the opening-turn prompt tell "the lesson's first step"
+    // apart from "a later step opening right after the previous one" —
+    // see tutorPrompt.js's buildOpeningTask.
+    stepNumber: z.number().int().positive(),
+    // Required (and only meaningful) when stepNumber > 1 — enforced below,
+    // not just left optional, so a client bug that omits it fails the
+    // request visibly instead of silently rendering a broken "finished
+    // "undefined"" sentence into the opening prompt (CLAUDE.md: "fail
+    // visibly rather than guessing or crashing").
+    previousStepTitle: z.string().max(300).optional(),
+  })
+  .refine((data) => data.stepNumber === 1 || Boolean(data.previousStepTitle), {
+    message: 'previousStepTitle is required when stepNumber > 1',
+    path: ['previousStepTitle'],
+  });

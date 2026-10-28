@@ -49,6 +49,15 @@
   anything, so this is a structural guarantee rather than relying on the model to get an edge
   case right every time — found via manual UI testing, where a step would occasionally complete
   itself on the turn that merely opened it. Also saves a Gemini call on every step-opening turn.
+- **A step-opening tutor-turn request carries `stepNumber` and (for step 2+) `previousStepTitle`**,
+  so the prompt can tell the lesson's first step apart from a later one. Without it, every step
+  opened with the same "Hello! Welcome!" framing — fine for step 1, but step 2+ read as the lesson
+  restarting rather than continuing, since the student had no reason to expect a fresh greeting
+  mid-conversation (found via live testing — investigated at length, including cross-referencing
+  server logs across several real sessions, before concluding it was a prompt-framing gap and not
+  a duplicate request or a client state bug). Chosen over resending the full prior-step history on
+  an opening turn (more tokens, slower, and unnecessary — a one-line "you just finished X" fact is
+  enough for a natural transition, the actual content of step X isn't needed to open step X+1).
 
 ## What was decided not to do, and why
 

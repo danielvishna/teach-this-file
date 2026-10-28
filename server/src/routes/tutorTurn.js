@@ -33,8 +33,17 @@ tutorTurnRouter.post('/', async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: `Invalid request: ${parsed.error.message}` });
   }
-  const { teacherPrompt, subject, targetAudience, language, step, history, studentMessage } =
-    parsed.data;
+  const {
+    teacherPrompt,
+    subject,
+    targetAudience,
+    language,
+    step,
+    history,
+    studentMessage,
+    stepNumber,
+    previousStepTitle,
+  } = parsed.data;
 
   const ai = createGeminiClient(apiKey);
   const prompt = buildTutorPrompt({
@@ -45,6 +54,8 @@ tutorTurnRouter.post('/', async (req, res) => {
     step,
     history,
     studentMessage,
+    stepNumber,
+    previousStepTitle,
   });
 
   const abortController = new AbortController();

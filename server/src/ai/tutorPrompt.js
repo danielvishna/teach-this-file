@@ -8,6 +8,29 @@
  */
 
 /**
+ * Builds the opening-turn instruction. Found via live testing: without an
+ * explicit distinction, the model would open step 2+ the same way it
+ * opens step 1 — "Hello! Welcome!" plus a fresh hook — which reads as the
+ * lesson restarting rather than continuing, since the student has no
+ * reason to expect a sudden greeting mid-conversation.
+ * @param {number} stepNumber 1-based index of the step being opened.
+ * @param {(string|undefined)} previousStepTitle The step just finished,
+ *     when `stepNumber > 1`.
+ * @return {string} The TASK section's instruction for an opening turn.
+ */
+function buildOpeningTask(stepNumber, previousStepTitle) {
+  if (stepNumber <= 1) {
+    return 'This step is just starting. Open it: introduce the idea with a hook or a question, Socratic style — do not just state facts at the student.';
+  }
+  return (
+    `This is a later step in the SAME ongoing lesson — the student just finished "${previousStepTitle}". ` +
+    'Do not greet the student again or act like the lesson is starting over (no "Hello", "Welcome", or ' +
+    'restating who you are). Open this step as a natural continuation: a brief bridge from what was just ' +
+    'covered into this new idea, then a hook or question, Socratic style — do not just state facts at the student.'
+  );
+}
+
+/**
  * @param {{
  *   teacherPrompt: string,
  *   subject: string,
@@ -16,7 +39,15 @@
  *   step: {title: string, objective: string, sourceExcerpt: string},
  *   history: !Array<{role: string, text: string}>,
  *   studentMessage: (string|undefined),
- * }} input
+ *   stepNumber: number,
+ *   previousStepTitle: (string|undefined),
+ * }} input `history` is scoped to this step only (CLAUDE.md), so on an
+ *     opening turn (no studentMessage) the model has no memory of earlier
+ *     steps by itself — `stepNumber`/`previousStepTitle` are what let the
+ *     opening instruction distinguish "the lesson's first step" (hook,
+ *     open-ended greeting) from "a later step opening right after the
+ *     last one finished" (bridge from it, don't re-greet) without
+ *     resending the whole prior transcript just for that framing.
  * @return {string} The full prompt sent to the model.
  */
 export function buildTutorPrompt({
@@ -27,6 +58,8 @@ export function buildTutorPrompt({
   step,
   history,
   studentMessage,
+  stepNumber,
+  previousStepTitle,
 }) {
   const historyText = history.length
     ? history.map((m) => `${m.role === 'tutor' ? 'TUTOR' : 'STUDENT'}: ${m.text}`).join('\n')
@@ -34,7 +67,7 @@ export function buildTutorPrompt({
 
   const task = studentMessage
     ? `The student just replied. Respond to them, continuing the lesson for this step.\n\nSTUDENT'S LATEST MESSAGE:\n${studentMessage}`
-    : 'This step is just starting. Open it: introduce the idea with a hook or a question, Socratic style — do not just state facts at the student.';
+    : buildOpeningTask(stepNumber, previousStepTitle);
 
   return `You are a patient, Socratic AI tutor teaching one subject (${subject}) to ${targetAudience}.
 

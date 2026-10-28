@@ -101,6 +101,13 @@ Keep these as separate modules, not intermixed:
   reason as above (less code, scales to any subject/age combination without new code) — a
   snippet library (option B) is the documented fallback if testing shows the model consistently
   gets tone/level wrong for some case, in which case add one targeted snippet for that case only.
+- **A step-opening turn must know whether it's the lesson's first step.** Each tutor-turn request
+  carries `stepNumber` (1-based) and, when `stepNumber > 1`, `previousStepTitle`. Since a step's
+  history is scoped to that step only (see API routes below), the model has no memory of earlier
+  steps on an opening turn by itself — without this, it opened every step the same way ("Hello!
+  Welcome!" plus a fresh hook), which read as the lesson restarting rather than continuing (found
+  via live testing). Step 1 still opens with a fresh hook; step 2+ is told explicitly not to
+  re-greet the student and to bridge from what was just covered instead.
 - **Language**: the AI detects the file's language and the teacher prompt's language as part of
   the same planning call, and decides the teaching language per the teacher's instruction
   (falling back to the file's language if the prompt doesn't specify). This is a model decision,

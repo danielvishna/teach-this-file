@@ -170,7 +170,6 @@ export const openapiSpec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['teacherPrompt', 'subject', 'targetAudience', 'language', 'step'],
                 properties: {
                   apiKey: { type: 'string', description: 'Gemini API key, sent per-request.' },
                   teacherPrompt: { type: 'string' },
@@ -179,6 +178,7 @@ export const openapiSpec = {
                   language: { type: 'string' },
                   step: {
                     type: 'object',
+                    required: ['title', 'objective', 'sourceExcerpt'],
                     properties: {
                       title: { type: 'string' },
                       objective: { type: 'string' },
@@ -193,7 +193,16 @@ export const openapiSpec = {
                     },
                   },
                   studentMessage: { type: 'string', description: 'Omitted when opening a step.' },
+                  stepNumber: { type: 'integer', minimum: 1, description: '1-based index of this step.' },
+                  previousStepTitle: {
+                    type: 'string',
+                    description:
+                      'The step just finished. Required in practice when stepNumber > 1 so the ' +
+                      "opening-turn prompt can bridge into this step instead of re-greeting the " +
+                      'student; meaningless (and ignored) for stepNumber 1.',
+                  },
                 },
+                required: ['teacherPrompt', 'subject', 'targetAudience', 'language', 'step', 'stepNumber'],
               },
             },
           },

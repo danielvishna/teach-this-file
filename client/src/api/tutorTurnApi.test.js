@@ -36,6 +36,7 @@ const BASE_ARGS = {
   language: 'en',
   step: { title: 'What is gravity?', objective: 'Define it', sourceExcerpt: 'Gravity pulls.' },
   history: [],
+  stepNumber: 1,
 };
 
 describe('streamTutorTurn', () => {
@@ -74,6 +75,23 @@ describe('streamTutorTurn', () => {
 
     expect(onChunk).toHaveBeenCalledWith('Hello');
     expect(onVerdict).toHaveBeenCalledWith(false);
+  });
+
+  it('sends stepNumber and previousStepTitle in the request body', async () => {
+    fetch.mockResolvedValueOnce({ ok: true, body: createFakeBody(['{"type":"verdict","stepCompleted":false}\n']) });
+
+    await streamTutorTurn({
+      ...BASE_ARGS,
+      stepNumber: 2,
+      previousStepTitle: 'Evaporation',
+      signal: new AbortController().signal,
+      onChunk: vi.fn(),
+      onVerdict: vi.fn(),
+    });
+
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.stepNumber).toBe(2);
+    expect(body.previousStepTitle).toBe('Evaporation');
   });
 
   it('throws the server error message when the response is not ok', async () => {

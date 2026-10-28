@@ -65,6 +65,8 @@ export function ChatScreen({ apiKey }) {
         },
         history: historyForApi,
         studentMessage,
+        stepNumber: currentStepIndex + 1,
+        previousStepTitle: lessonPlan.steps[currentStepIndex - 1]?.title,
         signal: controller.signal,
         onChunk: (text) => dispatch({ type: 'TUTOR_STREAM_CHUNK', textChunk: text }),
         onVerdict: (stepCompleted) => dispatch({ type: 'TUTOR_TURN_COMPLETE', stepCompleted }),
@@ -125,9 +127,16 @@ export function ChatScreen({ apiKey }) {
 
   if (phase === 'done') {
     return (
-      <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
+      <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="text-xl font-semibold">{lessonPlan.title}</h1>
         <p className="text-gray-600">Lesson complete — nice work!</p>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'RESET' })}
+          className="rounded bg-indigo-600 px-4 py-2 text-sm text-white"
+        >
+          Teach another file
+        </button>
       </div>
     );
   }

@@ -59,6 +59,7 @@ const VALID_BODY = {
   language: 'en',
   step: { title: 'What is gravity?', objective: 'Understand the basic force', sourceExcerpt: 'Gravity pulls.' },
   history: [],
+  stepNumber: 1,
 };
 
 /**
@@ -213,6 +214,33 @@ describe('POST /api/tutor-turn', () => {
     const lines = written.map((line) => JSON.parse(line));
     expect(lines.every((line) => line.type === 'chunk')).toBe(true);
     expect(mockAi.models.generateContent).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when stepNumber is missing', async () => {
+    const { stepNumber: _stepNumber, ...body } = VALID_BODY;
+    const res = await request(createApp()).post('/api/tutor-turn').send(body);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when stepNumber > 1 and previousStepTitle is missing', async () => {
+    const res = await request(createApp())
+      .post('/api/tutor-turn')
+      .send({ ...VALID_BODY, stepNumber: 2 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/previousStepTitle/i);
+  });
+
+  it('tells the model not to re-greet the student when opening a later step', async () => {
+    const mockAi = createMockAi({ chunks: ['Now that we know evaporation...'] });
+    createGeminiClient.mockReturnValue(mockAi);
+
+    await request(createApp())
+      .post('/api/tutor-turn')
+      .send({ ...VALID_BODY, stepNumber: 2, previousStepTitle: 'Evaporation' });
+
+    const prompt = mockAi.models.generateContentStream.mock.calls[0][0].contents;
+    expect(prompt).toContain('Evaporation');
+    expect(prompt).toMatch(/do not greet the student again/i);
   });
 
   it('falls back to the GEMINI_API_KEY env var when the request omits apiKey', async () => {

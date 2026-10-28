@@ -118,6 +118,24 @@ describe('ChatScreen', () => {
     renderChatScreen();
 
     await waitFor(() => expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument());
+
+    // Call 0 opens step 1 (verdict true completes it); call 1 is the
+    // auto-triggered opening of step 2. It must tell the server which step
+    // this is and what the student just finished, so the prompt can bridge
+    // into it instead of re-greeting (tutorPrompt.js's buildOpeningTask).
+    expect(streamTutorTurn).toHaveBeenCalledTimes(2);
+    expect(streamTutorTurn.mock.calls[1][0].studentMessage).toBeUndefined();
+    expect(streamTutorTurn.mock.calls[1][0].stepNumber).toBe(2);
+    expect(streamTutorTurn.mock.calls[1][0].previousStepTitle).toBe('What is gravity?');
+  });
+
+  it('opens the very first step with stepNumber 1 and no previousStepTitle', async () => {
+    streamTutorTurn.mockImplementation(async ({ onVerdict }) => onVerdict(false));
+    renderChatScreen();
+
+    await waitFor(() => expect(streamTutorTurn).toHaveBeenCalledTimes(1));
+    expect(streamTutorTurn.mock.calls[0][0].stepNumber).toBe(1);
+    expect(streamTutorTurn.mock.calls[0][0].previousStepTitle).toBeUndefined();
   });
 
   it('clicking Stop aborts the AbortSignal passed to streamTutorTurn', async () => {
@@ -252,5 +270,10 @@ describe('ChatScreen', () => {
     fireEvent.submit(input.closest('form'));
 
     expect(await screen.findByText(/lesson complete/i)).toBeInTheDocument();
+
+    // Regression: the done screen had no way back — clicking through
+    // resets the lesson so the teacher can start over with a new file.
+    fireEvent.click(screen.getByRole('button', { name: /teach another file/i }));
+    expect(screen.queryByText(/lesson complete/i)).not.toBeInTheDocument();
   });
 });
